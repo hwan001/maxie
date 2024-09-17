@@ -1,1 +1,88 @@
 # fileoptimizer
+
+
+클라이언트 요구사항
+- 현재 시스템의 정보를 스캔 및 수집해 매니저 서버(https 서버)에 암호화, 압축해서 전송하는 agent
+- 수집할 정보는 아래와 같음
+  - config에 있는 서버 내의 특정 경로 하위의 하위 디렉토리까지 전체 다 스캔하여 각 파일을 해쉬로 중복 구분함
+  - 시스템 정보 (os, 고유식별번호, 호스트 이름, 시스템 성능, 기종 등)
+  - 네트워크 정보 (공인 ip, private ip, 네트워크 인터페이스, 주변 네트워크 장비 목록, 주변 와이파이 탐색 목록 및 이력, 블루투스 탐색 목록 및 이력, 위치정보)
+  - 디렉토리 전체 구조
+- config는 서버와 동기화되어야 함, config의 내용으로 제어하고 수집할 범위를 지정함
+- 필요한 권한은 실행 시 요구
+- 서버에 로그인 인증에 대한 요청을 보내야됨
+
+프로그램 구조
+- 정보 수집 모듈
+  - 수집할 정보에 대해서 권한 및 범위(config) 체크
+  - 시스템 정보 수집
+  - 네트워크 정보 수집
+  - 파일 정보 수집
+  - 개인 정보 수집 (위치, 계정 이름 등)
+- 시스템 제어
+  - 파일 이동, 삭제, 생성 -> 동일한 파일임을 보장해야함
+- 인증 모듈
+  - 서버와 인증정보 주고받기
+  - 인증 확인, 인증 정보 암복호화 보관 등
+- 암복호화, 압축 모듈
+  - 수집된 정보, 서버와 주고받는 정보들에 대한 암복호화
+  - 송수신시 데이터 압축(가능하다면)
+
+서버 요구사항
+- 서버에서 아래 클라이언트를 브라우저를 통해 내려받을 수 있어야 하고 웹에서 설정한 config 정보도 같이 포함되어야 함
+- 간단한 JWT 인증 구현
+- 웹에서 인증 후 해당 유저에 대해 수집된 정보, 제어할 정보 등을 보여줌
+- react와 go backend(비동기 처리 원활한)
+
+
+```
+project-root/
+│
+├── client/                      # Go client code
+│   ├── config/                   # Configuration files for the client
+│   ├── pkg/                      # Shared utility functions (encryption, compression, etc.)
+│   ├── collector/                # Information collection (system, network, file, etc.)
+│   ├── handler/                  # System control (file move, delete)
+│   ├── auth/                     # Authentication logic
+│   ├── main.go                   # Main entry point for the client
+│   └── Dockerfile                # Dockerfile to build the client
+│
+├── server/                       # Go backend for the server
+│   ├── config/                   # Configuration files for the server
+│   ├── controllers/              # Business logic for different APIs
+│   ├── models/                   # Models (JWT tokens, user, system info)
+│   ├── routes/                   # HTTP routes
+│   ├── static/                   # Serve static files (React build)
+│   ├── utils/                    # Utility functions (encryption, file parsing, etc.)
+│   ├── Dockerfile                # Dockerfile to build the server
+│   └── main.go                   # Main entry point for the server
+│
+├── web/                          # React frontend
+│   ├── public/                   # Public static files
+│   ├── src/                      # React components and logic
+│   ├── Dockerfile                # Dockerfile to build the React frontend
+│   └── package.json              # NPM dependencies
+│
+├── docker-compose.yml             # Docker Compose file to start server, client, and frontend
+└── README.md                      # Documentation
+
+```
+
+
+go routine으로 프로그램 실행과 동시에 실행될 작업
+- 네트워크 관련 정보 수집
+  - 현재 pc의 인터페이스
+  - 인터페이스 중 ipv4 아이피를 할당받은 인터페이스가 있다면 해당 아이피 대역에 대한 네트워크 스캔
+    - 22, 80 등 기본 포트들이 활성화된 ip
+    - 해당 서버의 os와 가동 중인 서비스(추측도 포함)
+  - 현재 클라이언트에서 사용 중인(활성화된) 포트
+  - 연결된 외부 장비 목록(블루투스, 와이파이)
+- 시스템 관련 정보 수집
+  - 성능, 운영체제, 버전, 기타 시스템 파일 정보
+- 서버와 연결 시도 (네트워크 연결)
+  - 서버에서 다운로드 받을 때 각 클라이언트별 고유 코드 발급
+
+사용자 요청 시 실행될 작업
+- 로그인 시도
+- 파일 정리
+- 디렉토리 스캔 및 중복 파일 검사
