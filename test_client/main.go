@@ -9,46 +9,15 @@ import (
     "net/http"
     "sync"
     "time"
+    "fileoptimizer/common"
 
     "github.com/shirou/gopsutil/cpu"
     "github.com/shirou/gopsutil/host"
     netstat "github.com/shirou/gopsutil/net"
 )
 
-// 데이터 구조 정의
-type ClientData struct {
-    ClientID          string              `json:"client_id"`
-    NetworkInterfaces []NetworkInterface  `json:"network_interfaces"`
-    SystemInfo        SystemInfo          `json:"system_info"`
-    ActivePorts       []ActivePort        `json:"active_ports"`
-}
-
-type NetworkInterface struct {
-    Name string `json:"name"`
-    IP   string `json:"ip"`
-}
-
-type SystemInfo struct {
-    OS              string   `json:"os"`
-    Platform        string   `json:"platform"`
-    PlatformVersion string   `json:"platform_version"`
-    CPUs            []CPUInfo `json:"cpus"`
-}
-
-type CPUInfo struct {
-    ModelName string  `json:"model_name"`
-    Cores     int     `json:"cores"`
-    SpeedGHz  float64 `json:"speed_ghz"`
-}
-
-type ActivePort struct {
-    Port         int    `json:"port"`
-    LocalAddress string `json:"local_address"`
-}
-
-
 // 네트워크 정보 수집 함수
-func collectNetworkInfo(wg *sync.WaitGroup, data *ClientData, mutex *sync.Mutex) {
+func collectNetworkInfo(wg *sync.WaitGroup, data *common.ClientData, mutex *sync.Mutex) {
     defer wg.Done()
 
     fmt.Println("Collecting network interfaces...")
@@ -59,7 +28,7 @@ func collectNetworkInfo(wg *sync.WaitGroup, data *ClientData, mutex *sync.Mutex)
         return
     }
 
-    var networkInterfaces []NetworkInterface
+    var networkInterfaces []common.NetworkInterface
 
     for _, iface := range interfaces {
         addrs, err := iface.Addrs()
@@ -70,7 +39,7 @@ func collectNetworkInfo(wg *sync.WaitGroup, data *ClientData, mutex *sync.Mutex)
 
         for _, addr := range addrs {
             if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() && ipnet.IP.To4() != nil {
-                networkInterfaces = append(networkInterfaces, NetworkInterface{
+                networkInterfaces = append(networkInterfaces, common.NetworkInterface{
                     Name: iface.Name,
                     IP:   ipnet.IP.String(),
                 })
@@ -103,7 +72,7 @@ func scanIPRange(ip string, ports []int) {
 
 
 // 시스템 정보 수집 함수
-func collectSystemInfo(wg *sync.WaitGroup, data *ClientData, mutex *sync.Mutex) {
+func collectSystemInfo(wg *sync.WaitGroup, data *common.ClientData, mutex *sync.Mutex) {
     defer wg.Done()
 
     fmt.Println("Collecting system information...")
@@ -120,16 +89,16 @@ func collectSystemInfo(wg *sync.WaitGroup, data *ClientData, mutex *sync.Mutex) 
         return
     }
 
-    var cpus []CPUInfo
+    var cpus []common.CPUInfo
     for _, ci := range cpuInfo {
-        cpus = append(cpus, CPUInfo{
+        cpus = append(cpus, common.CPUInfo{
             ModelName: ci.ModelName,
             Cores:     int(ci.Cores),
             SpeedGHz:  ci.Mhz / 1000.0,
         })
     }
 
-    systemInfo := SystemInfo{
+    systemInfo := common.SystemInfo{
         OS:              hostInfo.OS,
         Platform:        hostInfo.Platform,
         PlatformVersion: hostInfo.PlatformVersion,
@@ -143,7 +112,7 @@ func collectSystemInfo(wg *sync.WaitGroup, data *ClientData, mutex *sync.Mutex) 
 
 
 // 현재 사용 중인 포트 정보 수집 함수
-func collectActivePorts(wg *sync.WaitGroup, data *ClientData, mutex *sync.Mutex) {
+func collectActivePorts(wg *sync.WaitGroup, data *common.ClientData, mutex *sync.Mutex) {
     defer wg.Done()
 
     fmt.Println("Collecting active ports...")
@@ -153,10 +122,10 @@ func collectActivePorts(wg *sync.WaitGroup, data *ClientData, mutex *sync.Mutex)
         return
     }
 
-    var activePorts []ActivePort
+    var activePorts []common.ActivePort
     for _, stat := range netStats {
         if stat.Status == "LISTEN" {
-            activePorts = append(activePorts, ActivePort{
+            activePorts = append(activePorts, common.ActivePort{
 				Port:         int(stat.Laddr.Port),
 				LocalAddress: stat.Laddr.IP,
 			})
@@ -169,14 +138,11 @@ func collectActivePorts(wg *sync.WaitGroup, data *ClientData, mutex *sync.Mutex)
 }
 
 // 서버와 연결하여 고유 코드 발급 함수
-func connectToServer(wg *sync.WaitGroup, data *ClientData, mutex *sync.Mutex) {
+func connectToServer(wg *sync.WaitGroup, data *common.ClientData, mutex *sync.Mutex) {
     defer wg.Done()
 
     fmt.Println("Connecting to server and requesting client ID...")
-    // 서버에 고유 코드 요청 로직 추가 (예: HTTP 요청)
-
-    // 예시: 서버에서 클라이언트 ID를 생성하여 반환한다고 가정
-    resp, err := http.Get("http://goserver.666lab.org/get-client-id")
+    resp, err := http.Get("https://goserver.666lab.org/get-client-id")
     if err != nil {
         fmt.Printf("Error connecting to server: %v\n", err)
         return
@@ -199,7 +165,7 @@ func main() {
     var wg sync.WaitGroup
     var mutex sync.Mutex
 
-    clientData := &ClientData{}
+    clientData := &common.ClientData{}
 
     // 네트워크 정보 수집 작업
     wg.Add(1)
@@ -227,7 +193,7 @@ func main() {
 }
 
 // 데이터 서버로 전송하는 함수
-func sendDataToServer(data *ClientData) {
+func sendDataToServer(data *common.ClientData) {
     url := "https://goserver.666lab.org/client-data"
 
     jsonData, err := json.Marshal(data)
