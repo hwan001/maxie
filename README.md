@@ -1,6 +1,5 @@
 # fileoptimizer
 
-
 클라이언트 요구사항
 - 현재 시스템의 정보를 스캔 및 수집해 매니저 서버(https 서버)에 암호화, 압축해서 전송하는 agent
 - 수집할 정보는 아래와 같음
@@ -33,40 +32,6 @@
 - 간단한 JWT 인증 구현
 - 웹에서 인증 후 해당 유저에 대해 수집된 정보, 제어할 정보 등을 보여줌
 - react와 go backend(비동기 처리 원활한)
-
-
-```
-project-root/
-│
-├── client/                      # Go client code
-│   ├── config/                   # Configuration files for the client
-│   ├── pkg/                      # Shared utility functions (encryption, compression, etc.)
-│   ├── collector/                # Information collection (system, network, file, etc.)
-│   ├── handler/                  # System control (file move, delete)
-│   ├── auth/                     # Authentication logic
-│   ├── main.go                   # Main entry point for the client
-│   └── Dockerfile                # Dockerfile to build the client
-│
-├── server/                       # Go backend for the server
-│   ├── config/                   # Configuration files for the server
-│   ├── controllers/              # Business logic for different APIs
-│   ├── models/                   # Models (JWT tokens, user, system info)
-│   ├── routes/                   # HTTP routes
-│   ├── static/                   # Serve static files (React build)
-│   ├── utils/                    # Utility functions (encryption, file parsing, etc.)
-│   ├── Dockerfile                # Dockerfile to build the server
-│   └── main.go                   # Main entry point for the server
-│
-├── web/                          # React frontend
-│   ├── public/                   # Public static files
-│   ├── src/                      # React components and logic
-│   ├── Dockerfile                # Dockerfile to build the React frontend
-│   └── package.json              # NPM dependencies
-│
-├── docker-compose.yml             # Docker Compose file to start server, client, and frontend
-└── README.md                      # Documentation
-
-```
 
 
 go routine으로 프로그램 실행과 동시에 실행될 작업

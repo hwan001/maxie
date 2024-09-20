@@ -2,7 +2,6 @@ version: '3'
 services:
   backend:
     build: ./server
-    # container_name: server
     restart: unless-stopped
     networks:
       - fileoptimizer-network
@@ -10,7 +9,6 @@ services:
       - "5000:5000"
   frontend:
     build: ./web
-    # container_name: web
     restart: unless-stopped
     networks:
       - fileoptimizer-network
