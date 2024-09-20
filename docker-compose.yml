@@ -3,10 +3,13 @@ services:
   backend:
     build: ./server
     restart: unless-stopped
+    volumes:
+      - /home/user/client:/root/client
     networks:
       - fileoptimizer-network
     ports:
       - "5001:5000"
+
   frontend:
     build: ./web
     restart: unless-stopped
@@ -14,6 +17,7 @@ services:
       - fileoptimizer-network
     ports:
       - "3001:3000"
+      
   nginx:
     build:
       context: ./nginx

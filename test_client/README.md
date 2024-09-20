@@ -7,7 +7,7 @@ GOOS=linux GOARCH=amd64 go build -o client-linux main.go
 GOOS=windows GOARCH=amd64 go build -o client-windows.exe main.go
 
 
-scp ./client-* user@t8p:/home/user/
+scp ./client-* user@t8p:/home/user/client
 
 
 # 코드 사이닝

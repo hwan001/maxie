@@ -1,6 +1,7 @@
 package main
 
 import (
+    "log"
     "github.com/gin-gonic/gin"
 	"time"
 	"github.com/gin-contrib/cors"
@@ -30,14 +31,17 @@ func main() {
 
     // GET
     router.GET(default_endpoint + "/get-client-id", getClientID)
-    router.GET(default_endpoint + "/download/client-mac", func(c *gin.Context) {
-        c.FileAttachment("/home/user/client-mac", "client")
+    router.GET(default_endpoint + "/download/client/mac", func(c *gin.Context) {
+        log.Println("Request for mac client")
+        c.FileAttachment("client-mac", "client")
     })
-	router.GET(default_endpoint + "/download/client-linux", func(c *gin.Context) {
-        c.FileAttachment("/home/user/client-linux", "client")
+	router.GET(default_endpoint + "/download/client/linux", func(c *gin.Context) {
+        log.Println("Request for linux client")
+        c.FileAttachment("client-linux", "client")
     })
-	router.GET(default_endpoint + "/download/client-windows", func(c *gin.Context) {
-        c.FileAttachment("/home/user/client-windows", "client.exe")
+	router.GET(default_endpoint + "/download/client/windows", func(c *gin.Context) {
+        log.Println("Request for windows client")
+        c.FileAttachment("client-windows", "client.exe")
     })
 
     protected := router.Group(default_endpoint + "/protected")

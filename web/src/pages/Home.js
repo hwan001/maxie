@@ -8,9 +8,9 @@ function Home() {
     { 
         label: "Downloads", 
         submenu: [
-          { img: "https://cdn.prod.website-files.com/63ed4bc7a4b189da942a6b8c/65ce30961d407eff31c44dd4_BookOpenText.svg", label: "Windows", path: "/download/windows" },
-          { img: "https://cdn.prod.website-files.com/63ed4bc7a4b189da942a6b8c/65ce30961d407eff31c44dd4_BookOpenText.svg", label: "linux", path: "/download/linux" },
-          { img: "https://cdn.prod.website-files.com/63ed4bc7a4b189da942a6b8c/65ce30961d407eff31c44dd4_BookOpenText.svg", label: "mac", path: "https://goserver.666lab.org/download/client-mac" }
+          { img: "", label: "Windows", path: "/api/download/client/windows" },
+          { img: "", label: "linux", path: "/api/download/client/linux" },
+          { img: "", label: "mac", path: "/api/download/client/mac" }
         ]
     },
     { label: "Blog", path: "https://hwan001.co.kr"},

@@ -17,18 +17,17 @@ func main() {
 
 	// 파일 스캔
 	files := collector.ScanFiles(scanDir)
-  fmt.Println(files)
   
 	// 중복 파일 제거
-  //collector.RemoveDuplicateFiles(files)
+  	collector.RemoveDuplicateFiles(files)
 
-  // Collect system information
-	systemInfo := collector.CollectSystemInfo()
+  	// Collect system information
+	//systemInfo := collector.CollectSystemInfo()
 
-  fmt.Println(systemInfo)
+  	//fmt.Println(systemInfo)
 
-  //collector.CollectNetworInfo()
-  collector.DefaultNetworkInfo()
+  	//collector.CollectNetworInfo()
+  	//collector.DefaultNetworkInfo()
 
 	//  // Load config
 	//  config, err := config.LoadConfig()

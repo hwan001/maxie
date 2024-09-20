@@ -61,12 +61,13 @@ func RemoveDuplicateFiles(files []*common.FileInfo) {
 					fmt.Printf(" Keeping file: %s\n", path)
 				} else {
 					// 중복 파일 삭제
-					err := os.Remove(path)
-					if err != nil {
-						fmt.Printf(" Failed to delete file: %s, error: %v\n", path, err)
-					} else {
-						fmt.Printf(" Deleted file: %s\n", path)
-					}
+					//err := os.Remove(path)
+					// if err != nil {
+					// 	fmt.Printf(" Failed to delete file: %s, error: %v\n", path, err)
+					// } else {
+					// 	fmt.Printf(" Deleted file: %s\n", path)
+					// }
+					fmt.Printf(" Deleted file: %s\n", path)
 				}
 			}
 		}

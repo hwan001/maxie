@@ -142,7 +142,7 @@ func connectToServer(wg *sync.WaitGroup, data *common.ClientData, mutex *sync.Mu
     defer wg.Done()
 
     fmt.Println("Connecting to server and requesting client ID...")
-    resp, err := http.Get("https://goserver.666lab.org/get-client-id")
+    resp, err := http.Get("https://goserver.666lab.org/api/get-client-id")
     if err != nil {
         fmt.Printf("Error connecting to server: %v\n", err)
         return
@@ -194,7 +194,7 @@ func main() {
 
 // 데이터 서버로 전송하는 함수
 func sendDataToServer(data *common.ClientData) {
-    url := "https://goserver.666lab.org/client-data"
+    url := "https://goserver.666lab.org/api/client-data"
 
     jsonData, err := json.Marshal(data)
     if err != nil {
