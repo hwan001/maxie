@@ -1,31 +1,15 @@
-# Base image
-FROM golang:1.18-alpine AS builder
+# build
+FROM golang:1.22-alpine AS builder
 
-# Set work directory
 WORKDIR /app
-
-# Copy go mod and sum files
-COPY go.mod go.sum ./
-
-# Download dependencies
-RUN go mod download
-
-# Copy all files to the container
 COPY . .
+RUN go mod tidy
+RUN go build -o server .
 
-# Build the Go server
-RUN go build -o server main.go
-
-# Final image
+# run
 FROM alpine:latest
 
 WORKDIR /root/
-
-# Copy the compiled binary from the builder
 COPY --from=builder /app/server .
 
-# Copy static files (React build) to serve with the backend
-COPY static/ ./static/
-
-# Execute the binary
 CMD ["./server"]
