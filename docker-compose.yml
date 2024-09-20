@@ -6,14 +6,14 @@ services:
     networks:
       - fileoptimizer-network
     ports:
-      - "5000:5000"
+      - "5001:5000"
   frontend:
     build: ./web
     restart: unless-stopped
     networks:
       - fileoptimizer-network
     ports:
-      - "3000:3000"
+      - "3001:3000"
   nginx:
     build:
       context: ./nginx
