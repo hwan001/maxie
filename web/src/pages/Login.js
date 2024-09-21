@@ -3,6 +3,9 @@ import axios from 'axios';
 import { useGoogleLogin } from '@react-oauth/google';
 import '../styles/Login.css';
 import IMG_PROFILE from '../images/profile.png';
+
+import Navbar from "../components/Navbar.js";
+
 import { BASE_URL } from '../constants';
 
 function Profile() {
@@ -72,10 +75,24 @@ function Profile() {
     fetchProfile();
   }, []);
 
+  const MenuItems = [
+    {label: "Home", path: "/"},
+    { 
+        label: "Downloads", 
+        submenu: [
+          { img: "", label: "Windows", path: "/api/download/client/windows" },
+          { img: "", label: "linux", path: "/api/download/client/linux" },
+          { img: "", label: "mac", path: "/api/download/client/mac" }
+        ]
+    }
+  ];
+
+
   return (
+    <>
+    <Navbar menuItems={MenuItems} />
     <div className='profile-container'>
-      {
-        profile ? (
+      {profile ? (
           <div className="profile-details">
             <img src={profile.picture} alt="profile" className='profile-avathar' />
             <div className="profile-content">
@@ -105,6 +122,7 @@ function Profile() {
         )
       }
     </div>
+    </>
   );
 }
 

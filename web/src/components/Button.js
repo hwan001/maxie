@@ -2,8 +2,8 @@ import React from "react";
 import "../styles/Button.css";
 import { Link } from "react-router-dom";
 
-const STYLES = ["btn--primary", "btn--outline"];
-const SIZES = ["btn--medium", "btn--large"];
+const STYLES = ["btn--primary", "btn--outline", "btn-mobile--outline"];
+const SIZES = ["btn--medium", "btn--large", "btn-mobile--small", "btn-mobile--medium"];
 
 export const Button = ({
   children,
@@ -22,7 +22,7 @@ export const Button = ({
 
   return (
     // children안에 어떤 내용을 입력해도 버튼 이름이 된다.
-    <Link to={linkTo} className="btn-mobile">
+    <Link to={linkTo} className="link-mobile">
       <button
         className={`btn ${checkButtonStyle} ${checkButtonSize}`}
         onClick={onClick}
