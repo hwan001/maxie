@@ -51,3 +51,30 @@ go routine으로 프로그램 실행과 동시에 실행될 작업
 - 로그인 시도
 - 파일 정리
 - 디렉토리 스캔 및 중복 파일 검사
+
+
+### 우분투 goenv, go 설치
+
+- .bashrc
+```bash
+export GOENV_ROOT="$HOME/.goenv"
+export PATH="$GOENV_ROOT/bin:$PATH"
+eval "$(goenv init -)"
+```
+
+- install
+```bash
+git clone https://github.com/syndbg/goenv.git ~/.goenv
+
+# .bashrc 추가
+
+source ~/.bashrc  # 또는 source ~/.zshrc
+
+goenv install -l  # 설치 가능한 Go 버전 목록 확인
+goenv install 1.22.2  # 원하는 버전 설치
+
+goenv global 1.22.2 # goenv local 1.22.2
+goenv version
+
+goenv uninstall 1.22.2
+```

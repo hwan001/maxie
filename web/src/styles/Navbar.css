@@ -30,64 +30,61 @@
     align-items: center;
   }
   
-  .fa-typo3 {
-    margin-left: 0.5rem;
-    font-size: 1.8rem;
-  }
+.fa-typo3 {
+  margin-left: 0.5rem;
+  font-size: 1.8rem;
+}
 
-  .nav-menu {
-    display: flex;
-    /* grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); */
-    /* grid-gap: 10px; */
-    gap: 0;
-    list-style: none;
-    text-align: center;
-    width: 60vw;
-    /*margin-right: 2rem;*/
-  }
+.nav-menu {
+  display: flex;
+  /* grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); */
+  /* grid-gap: 10px; */
+  gap: 0;
+  list-style: none;
+  text-align: center;
+  width: 60vw;
+  /*margin-right: 2rem;*/
+}
 
-  .nav-item {
-    height: 80px !important; /* 헤더의 전체 높이에 맞춤 */
-    display: inline-block;
-    margin: 0; /* margin-top 제거 */
-    /* position: relative; /* border-bottom 정렬을 위해 relative 설정 */
-  }
-  
-  /* menuItems로 전달되는 헤더 내부 버튼들 */
-  .nav-links {
-      color: #fff;
-      /* display: inline-flex; */
-      display: flex;
-      
-      align-items: center; /* 텍스트를 수직 중앙 정렬 */
-      text-decoration: none; /* 밑줄 제거 */
-      padding: 0 1rem; /* 텍스트와 테두리 사이의 여백 설정 */
-      height: 100%; /* nav-item 높이에 맞춤 */
-      width: auto; /* 텍스트 길이에 맞게 조절 */
-      box-sizing: border-box; /* padding과 border 포함한 크기 설정 */
-      border-bottom: 4px solid rgba(0, 0, 0, 0); /* 기본적으로 보이지 않음 */
-      /* transition: border-bottom 0.3s ease-in-out; */
-  }
+.nav-item {
+  height: 80px !important; /* 헤더의 전체 높이에 맞춤 */
+  display: inline-block;
+  margin: 0; /* margin-top 제거 */
+  /* position: relative; /* border-bottom 정렬을 위해 relative 설정 */
+}
 
-  .nav-links:hover {
-    border-bottom: 4px solid #fff;
-    transition: all 0.2s ease-out;
-  }
-  
-  .fa-bars {
+/* menuItems로 전달되는 헤더 내부 버튼들 */
+.nav-links {
     color: #fff;
-  }
+    /* display: inline-flex; */
+    display: flex;
+    
+    align-items: center; /* 텍스트를 수직 중앙 정렬 */
+    text-decoration: none; /* 밑줄 제거 */
+    padding: 0 1rem; /* 텍스트와 테두리 사이의 여백 설정 */
+    height: 100%; /* nav-item 높이에 맞춤 */
+    width: auto; /* 텍스트 길이에 맞게 조절 */
+    box-sizing: border-box; /* padding과 border 포함한 크기 설정 */
+    border-bottom: 4px solid rgba(0, 0, 0, 0); /* 기본적으로 보이지 않음 */
+    /* transition: border-bottom 0.3s ease-in-out; */
+}
 
-  
-  .nav-links-mobile {
-    display: none;
-  }
-  
-  .menu-icon {
-    display: none;
-  }
-  
+.nav-links:hover {
+  border-bottom: 4px solid #fff;
+  transition: all 0.2s ease-out;
+}
 
+.fa-bars {
+  color: #fff;
+}
+
+.nav-links-mobile {
+  display: none;
+}
+
+.menu-icon {
+  display: none;
+}
 
 /* 하위 메뉴의 기본 숨김 처리 */
 .dropdown-content {
@@ -95,7 +92,7 @@
     position: absolute;
     top: 100%; /* 부모 요소 아래에 위치 */
     left: 0;
-    background: linear-gradient(90deg, rgba(100, 100, 100, 1) 0%, rgba(200, 200, 200, 1) 100%);
+    background: linear-gradient(90deg, rgb(80, 100, 143) 0%, rgb(84, 112, 184) 100%);
     box-shadow: 0 8px 16px rgba(0,0,0,0.2);
     z-index: 1000;
     min-width: 200px;
@@ -113,6 +110,28 @@
 .nav-item:hover .dropdown-content, .nav-item .dropdown-content:hover{
     display: block; /* 보이도록 설정 */
 }
+
+.dropdown-item {
+  display: flex; /* 아이콘과 텍스트를 같은 줄에 배치 */
+  align-items: center; /* 수직 가운데 정렬 */
+  padding: 10px; /* 여백 설정 */
+  gap: 10px; /* 아이콘과 텍스트 간 간격 */
+  color: #fff; /* 텍스트 색상 */
+  text-decoration: none; /* 링크 밑줄 제거 */
+}
+
+.dropdown-item a {
+  display: flex; /* 링크 내부에서 아이콘과 텍스트를 같은 줄에 배치 */
+  align-items: center; /* 수직 가운데 정렬 */
+  color: inherit; /* 부모 요소의 색상 상속 */
+  text-decoration: none; /* 링크 밑줄 제거 */
+}
+
+.dropdown-item i {
+  margin-right: 10px; /* 아이콘과 텍스트 사이의 간격 설정 */
+  color: inherit; /* 부모 요소의 색상 상속 */
+}
+
 
 .menu-toggle {
   display: none; /* 기본적으로 숨김 */

@@ -8,9 +8,9 @@ function Home() {
     { 
         label: "Downloads", 
         submenu: [
-          { img: "", label: "Windows", path: "/api/download/client/windows" },
-          { img: "", label: "linux", path: "/api/download/client/linux" },
-          { img: "", label: "mac", path: "/api/download/client/mac" }
+          { i: "windows", label: "windows", path: "/api/download/client/windows" },
+          { i: "linux", label: "linux", path: "/api/download/client/linux" },
+          { i: "apple", label: "mac", path: "/api/download/client/mac" }
         ]
     },
     { label: "Blog", path: "https://hwan001.co.kr"},

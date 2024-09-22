@@ -33,15 +33,15 @@ func main() {
     router.GET(default_endpoint + "/get-client-id", getClientID)
     router.GET(default_endpoint + "/download/client/mac", func(c *gin.Context) {
         log.Println("Request for mac client")
-        c.FileAttachment("client-mac", "client")
+        c.FileAttachment("./client/client-mac", "client")
     })
 	router.GET(default_endpoint + "/download/client/linux", func(c *gin.Context) {
         log.Println("Request for linux client")
-        c.FileAttachment("client-linux", "client")
+        c.FileAttachment("./client/client-linux", "client")
     })
 	router.GET(default_endpoint + "/download/client/windows", func(c *gin.Context) {
         log.Println("Request for windows client")
-        c.FileAttachment("client-windows", "client.exe")
+        c.FileAttachment("./client/client-windows", "client.exe")
     })
 
     protected := router.Group(default_endpoint + "/protected")

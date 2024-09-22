@@ -7,20 +7,16 @@ services:
       - /home/user/client:/root/client
     networks:
       - fileoptimizer-network
-    ports:
-      - "5001:5000"
 
   frontend:
     build: ./web
     restart: unless-stopped
     networks:
       - fileoptimizer-network
-    ports:
-      - "3001:3000"
-      
+
   nginx:
-    build:
-      context: ./nginx
+    build: ./nginx
+    restart: unless-stopped
     ports:
       - "8080:80"
     depends_on:

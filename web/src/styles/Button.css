@@ -45,6 +45,8 @@
     transition: all 0.3s ease-out;
 }
 
+
+/* 모바일 전용 스타일 */
 .btn-mobile--small:hover,
 .btn-mobile--medium:hover {
     background-color: yellow;
@@ -53,8 +55,6 @@
     transition: all 0.3s ease-out;
 }
 
-
-/* 모바일 전용 스타일 */
 .btn-mobile--outline {
   padding: 8px 16px;
   background-color: #777777;
@@ -74,7 +74,7 @@
   font-size: 10px;
 }
 
-.btn-mobile-1 {
+.link-mobile-1 {
   display: block;
   /* width: 100%; /* 버튼이 모바일 화면에서 전체 너비를 차지하게 설정 */
   padding: 12px 20px; /* 여백 설정 */

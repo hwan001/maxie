@@ -21,7 +21,6 @@ export const Button = ({
   const checkButtonSize = SIZES.includes(buttonSize) ? buttonSize : SIZES[0];
 
   return (
-    // children안에 어떤 내용을 입력해도 버튼 이름이 된다.
     <Link to={linkTo} className="link-mobile">
       <button
         className={`btn ${checkButtonStyle} ${checkButtonSize}`}
