@@ -181,6 +181,8 @@ func getProfile(c *gin.Context) {
         return
     }
 
+    fmt.Println(user)
+
     c.JSON(http.StatusOK, gin.H{"profile": user})
 }
 
@@ -193,10 +195,29 @@ func logout(c *gin.Context) {
         return
     }
 
-    userInfo := user.(*User) // 사용자 정보 캐스팅
+    // userInfo := user.(*User) // 사용자 정보 캐스팅
+
+    
+    userMap, ok := user.(map[string]interface{})
+    if !ok {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user data"})
+        return
+    }
+
+    userDetails, ok := userMap["user"].(map[string]interface{})
+    if !ok {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "User details not found"})
+        return
+    }
+
+    userID, ok := userDetails["id"].(string)
+    if !ok {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID not found"})
+        return
+    }
 
     // 사용자가 등록한 정보를 삭제 (예: 데이터베이스 삭제)
-    delete(users, userInfo.ID)
+    delete(users, userID)
 
     // JWT 블랙리스트에 토큰 추가 (토큰 무효화)
     token, err := c.Cookie("jwt")
@@ -216,4 +237,9 @@ func logout(c *gin.Context) {
     })
 
     c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully and user information deleted"})
+}
+
+
+func getData(c *gin.Context) {
+    c.JSON(http.StatusOK, gin.H{"data": "test data"})
 }

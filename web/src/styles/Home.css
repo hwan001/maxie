@@ -1,0 +1,20 @@
+/* styles.css */
+.section {
+    padding: 50px;
+    color: rgb(98, 91, 91);
+    min-height: 100vh; /* 각 섹션이 화면 전체 높이를 차지하도록 설정 */
+  }
+  
+  #home {
+    background-image: url('../images/background/home.png'); /* home 섹션 배경 이미지 */
+    background-size: cover;
+    background-position: center;
+  }
+  
+  #features {
+    /* background-image: url('../images/background/features.png'); /* features 섹션 배경 이미지 */
+    background-size: cover;
+    background-position: center;
+    color: rgb(222, 123, 123);
+  }
+  

@@ -1,5 +1,7 @@
 import React from "react";
 
+import '../styles/DropdownItem.css';
+
 const DropdownItem = ({ icon, label, path }) => {
   return (
     <div className="dropdown-item">

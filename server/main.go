@@ -31,6 +31,7 @@ func main() {
 
     // GET
     router.GET(default_endpoint + "/get-client-id", getClientID)
+    router.GET(default_endpoint + "/data", getData)
     router.GET(default_endpoint + "/download/client/mac", func(c *gin.Context) {
         log.Println("Request for mac client")
         c.FileAttachment("./client/client-mac", "client")

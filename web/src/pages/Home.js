@@ -1,20 +1,24 @@
 import React from "react";
+
 import "../styles/Common.css";
+import "../styles/Home.css";
 
 import Navbar from "../components/Navbar.js";
 
 function Home() {
   const homeMenuItems = [
+    { i:"fa-solid fa-table-columns", label: "Dashboard", path:"/dashboard"},
     { 
-        label: "Downloads", 
+        i: "fa-solid fa-download",
+        label: "Downloads",
         submenu: [
           { i: "windows", label: "windows", path: "/api/download/client/windows" },
           { i: "linux", label: "linux", path: "/api/download/client/linux" },
           { i: "apple", label: "mac", path: "/api/download/client/mac" }
         ]
     },
-    { label: "Blog", path: "https://hwan001.co.kr"},
-    { label: "GitHub", path: "https://github.com/hwan001"},
+    { i:"fa-solid fa-rss", label: "Blog", path: "https://hwan001.co.kr"},
+    { i:"fa-brands fa-github", label: "GitHub", path: "https://github.com/hwan001"},
   ];
 
   return (
