@@ -132,8 +132,9 @@ func handleGoogleAuth(c *gin.Context) {
         Value:    jwtToken,
         HttpOnly: true,
         Secure:   true,
-        SameSite: http.SameSiteNoneMode,
+        SameSite: http.SameSiteStrictMode, // SameSiteNoneMode,
         Path:     "/",
+        Domain:   "666lab.org",
     })
 
     c.JSON(http.StatusOK, gin.H{"message": "Logged in", "profile": user})
@@ -181,43 +182,39 @@ func getProfile(c *gin.Context) {
         return
     }
 
-    fmt.Println(user)
-
     c.JSON(http.StatusOK, gin.H{"profile": user})
 }
 
 // 로그아웃 핸들러
 func logout(c *gin.Context) {
     // 컨텍스트에서 사용자 정보 가져오기
-    user, exists := c.Get("user")
-    if !exists {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "User information not found"})
-        return
-    }
-
-    // userInfo := user.(*User) // 사용자 정보 캐스팅
-
-    
-    userMap, ok := user.(map[string]interface{})
-    if !ok {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user data"})
-        return
-    }
-
-    userDetails, ok := userMap["user"].(map[string]interface{})
-    if !ok {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "User details not found"})
-        return
-    }
-
-    userID, ok := userDetails["id"].(string)
-    if !ok {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID not found"})
-        return
-    }
+    // user, exists := c.Get("user")
+    // if !exists {
+    //     c.JSON(http.StatusInternalServerError, gin.H{"error": "User information not found"})
+    //     return
+    // }
+    // fmt.Printf("user : %s", user)
+    // userMap, ok := user.(Users)
+    // if !ok {
+    //     c.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user data"})
+    //     return
+    // }
+    // fmt.Printf("userMap : %s", userMap)
+    // userDetails, ok := userMap["user"].(map[string]interface{})
+    // if !ok {
+    //     c.JSON(http.StatusInternalServerError, gin.H{"error": "User details not found"})
+    //     return
+    // }
+    // fmt.Printf("userDetails : %s", userDetails)
+    // userID, ok := userMap["id"].(string)
+    // if !ok {
+    //     c.JSON(http.StatusInternalServerError, gin.H{"error": "User ID not found"})
+    //     return
+    // }
+    // fmt.Printf("delete : %s", userID)
 
     // 사용자가 등록한 정보를 삭제 (예: 데이터베이스 삭제)
-    delete(users, userID)
+    // delete(users, userID)
 
     // JWT 블랙리스트에 토큰 추가 (토큰 무효화)
     token, err := c.Cookie("jwt")
@@ -227,13 +224,15 @@ func logout(c *gin.Context) {
 
     // 클라이언트 측에서 JWT 쿠키 삭제
     http.SetCookie(c.Writer, &http.Cookie{
-        Name:     "jwt",
-        Value:    "",
-        Expires:  time.Now().Add(-time.Hour), // 만료시간을 과거로 설정하여 삭제
-        HttpOnly: true,
-        Secure:   true,
-        SameSite: http.SameSiteNoneMode,
-        Path:     "/",
+        Name:       "jwt",
+        Value:      "",
+        Expires:    time.Now().Add(-time.Hour), // 만료시간을 과거로 설정하여 삭제
+        MaxAge:     -1, // 쿠키 즉시 삭제
+        HttpOnly:   true,
+        Secure:     true,
+        SameSite:   http.SameSiteStrictMode, // SameSiteNoneMode,
+        Path:       "/",
+        Domain:     "666lab.org",
     })
 
     c.JSON(http.StatusOK, gin.H{"message": "Logged out successfully and user information deleted"})
@@ -242,4 +241,5 @@ func logout(c *gin.Context) {
 
 func getData(c *gin.Context) {
     c.JSON(http.StatusOK, gin.H{"data": "test data"})
+    /* dashboard 접근하면 여기로 요청, 요청받으면 에이전트 연결 정보를 스캔해서 알려주기 */
 }

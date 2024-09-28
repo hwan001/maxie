@@ -6,7 +6,8 @@ import IMG_PROFILE from '../images/profile.png';
 
 import Navbar from "../components/Navbar.js";
 
-import { BASE_URL } from '../constants';
+import { BASE_URL, Title, Logo, MenuItems } from '../constants';
+
 
 function Profile() {
   const [profile, setProfile] = useState(null);
@@ -67,7 +68,7 @@ function Profile() {
 
   // 특정 엔드포인트로 리다이렉트
   const handleRedirect = () => {
-    window.location.href = `${BASE_URL}/protected`;
+    window.location.href = `${BASE_URL}/protected/profile`;
   };
 
   // 컴포넌트가 마운트될 때 프로필 정보를 가져옴
@@ -75,22 +76,9 @@ function Profile() {
     fetchProfile();
   }, []);
 
-  const MenuItems = [
-    {label: "Home", path: "/"},
-    { 
-        label: "Downloads", 
-        submenu: [
-          { i: "windows", label: "Windows", path: "/api/download/client/windows" },
-          { i: "linux", label: "linux", path: "/api/download/client/linux" },
-          { i: "apple", label: "mac", path: "/api/download/client/mac" }
-        ]
-    }
-  ];
-
-
   return (
     <>
-    <Navbar menuItems={MenuItems} />
+    <Navbar title={Title} logo={Logo} menuItems={MenuItems['login']} />
     <div className='profile-container'>
       {profile ? (
           <div className="profile-details">

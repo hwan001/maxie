@@ -9,7 +9,7 @@ import '../styles/DropdownItem.css';
 import DropdownItem from '../components/DropdownItem.js';
 
 
-function Navbar({ menuItems }) {
+function Navbar({ title, logo, menuItems }) {
     const [click, setClick] = useState(false);
     const handleClick = () => setClick(!click);
     const closeMobileMenu = () => setClick(false);
@@ -32,8 +32,8 @@ function Navbar({ menuItems }) {
             <nav className='navbar'>
                 <div className='navbar-container'>
                     <Link to='/' className='navbar-logo' onClick={closeMobileMenu}>
-                        LOGO
-                        <i className='fab fa-typo3' />
+                        {title || "LOGO"}
+                        <i className={logo} />
                     </Link>
 
                     <div className='menu-icon' onClick={handleClick}>
@@ -68,6 +68,7 @@ function Navbar({ menuItems }) {
                             </li>
                         ))}
                     </ul>
+                    
                     <div className='nav-btns'>
                         {!session && <Button linkTo='/login' buttonStyle='btn--outline'>Log in</Button>}
                         {!session && <Button linkTo='/signup' buttonStyle='btn--outline'>Sign up</Button>}
