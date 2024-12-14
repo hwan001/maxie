@@ -1,4 +1,4 @@
-package collector
+package main
 
 import (
 	"crypto/sha256"
@@ -80,8 +80,10 @@ func ScanFiles(root string) []*FileInfo {
 	return files
 }
 
-func DuplicateFiles(files []*FileInfo) {
+func DuplicateFiles(files []*FileInfo) map[string][]string {
 	fileMap := make(map[string][]string)
+	duplicateMap := make(map[string][]string)
+	
 	for _, file := range files {
 		fileMap[file.Hash] = append(fileMap[file.Hash], file.Path)
 	}
@@ -92,7 +94,24 @@ func DuplicateFiles(files []*FileInfo) {
 		for i, path := range paths {
 			if len(paths) > 1 {
 				fmt.Printf("  path(%d) : %s \n", i, path)
+				duplicateMap[hash] = paths
 			}
 		}
 	}
+
+	return duplicateMap
+}
+
+
+func collectNetworkInfo(wg *sync.WaitGroup, data *ClientData, mutex *sync.Mutex) {
+	defer wg.Done()
+
+	fmt.Println("Collecting network interfaces...")
+
+	files := ScanFiles("root/path/")
+	filescanningdata := DuplicateFiles(files) // 중복 파일 데이터 생성
+
+	mutex.Lock()
+	data.NetworkInterfaces = filescanningdata
+	mutex.Unlock()
 }

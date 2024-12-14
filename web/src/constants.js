@@ -7,7 +7,7 @@ export const Logo="fab fa-typo3";
 
 export const MenuItems = {
     "dashboard":[ 
-        { i:"fa-solid fa-house", label: "Home", path:"/"}
+        { i:"fa-solid fa-house", label: "Home", path:"/"},
     ],
     "home":[
         { i:"fa-solid fa-table-columns", label: "Dashboard", path:"/dashboard"},

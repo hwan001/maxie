@@ -24,10 +24,18 @@ func receiveClientData(c *gin.Context) {
         return
     }
 
-    log.Printf("Received data from client %s\n", data.ClientID)
-    log.Printf("Network Interfaces: %+v\n", data.NetworkInterfaces)
-    log.Printf("System Info: %+v\n", data.SystemInfo)
-    log.Printf("Active Ports: %+v\n", data.ActivePorts)
+    log.Printf("Received data from client: \n%s\n", data.ClientID)
+
+    // log.Printf("Network Interfaces: %+v\n- Name: %s (%s)\n", data.NetworkInterfaces, data.NetworkInterfaces[0].Name, data.NetworkInterfaces[0].IP)
+    for _, iface := range data.NetworkInterfaces {
+        log.Printf("- %s, %s\n", iface.Name, iface.IP)
+    }
+
+    // log.Printf("System Info: \n%+v\n", data.SystemInfo)
+    log.Printf("%s\n%s\n%s\n%v", data.SystemInfo.OS, data.SystemInfo.Platform, data.SystemInfo.PlatformVersion, data.SystemInfo.CPUs)
+
+
+    log.Printf("Active Ports: \n%+v\n", data.ActivePorts)
 
     c.JSON(http.StatusOK, gin.H{"message": "data received"})
 }
