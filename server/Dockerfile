@@ -12,6 +12,6 @@ FROM alpine:latest
 WORKDIR /root/
 COPY --from=builder /app/server .
 
-EXPOSE 5000
+EXPOSE 50000
 
 CMD ["./server"]

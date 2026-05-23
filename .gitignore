@@ -29,3 +29,11 @@ go.work.sum
 *secret.js
 *secret.go
 secrets/
+
+# IDE files
+.DS_Store
+PLAN.md
+
+# binary files
+agent/agent
+server/server

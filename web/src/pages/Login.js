@@ -1,117 +1,156 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { useGoogleLogin } from '@react-oauth/google';
-import '../styles/Login.css';
-import IMG_PROFILE from '../images/profile.png';
+import React, { useState, useEffect } from "react";
+import { Link, useLocation } from "react-router-dom";
+import axios from "axios";
+import { useGoogleLogin } from "@react-oauth/google";
+import "../styles/Login.css";
+import IMG_PROFILE from "../images/profile.png";
 
-import Navbar from "../components/Navbar.js";
+import { BASE_URL, Title, Logo } from "../constants";
 
-import { BASE_URL, Title, Logo, MenuItems } from '../constants';
+const GoogleIcon = () => (
+	<svg width="18" height="18" viewBox="0 0 18 18">
+		<path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 01-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615z"/>
+		<path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 009 18z"/>
+		<path fill="#FBBC05" d="M3.964 10.706A5.41 5.41 0 013.682 9c0-.593.102-1.17.282-1.706V4.962H.957A8.996 8.996 0 000 9c0 1.452.348 2.827.957 4.038l3.007-2.332z"/>
+		<path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 00.957 4.962L3.964 6.294C4.672 4.167 6.656 3.58 9 3.58z"/>
+	</svg>
+);
 
+function AuthPage() {
+	const location = useLocation();
+	const isSignup = location.pathname === "/signup";
 
-function Profile() {
-  const [profile, setProfile] = useState(null);
-  const [error, setError] = useState(null);
+	const [profile, setProfile] = useState(null);
 
-  // Google Login 기능 설정
-  const login = useGoogleLogin({
-    flow: 'auth-code',
-    onSuccess: async (codeResponse) => {
-      try {
-        const response = await axios.post(`${BASE_URL}/auth/google`, {
-          code: codeResponse.code,
-        }, { withCredentials: true });
+	const login = useGoogleLogin({
+		flow: "auth-code",
+		onSuccess: async (codeResponse) => {
+			try {
+				const response = await axios.post(
+					`${BASE_URL}/auth/google`,
+					{ code: codeResponse.code },
+					{ withCredentials: true }
+				);
+				if (response.data.message === "Logged in") {
+					setProfile(response.data.profile);
+				}
+			} catch {
+				// auth error — user stays on page
+			}
+		},
+		onError: () => {},
+	});
 
-        console.log(response.data);
-        if (response.data.message === 'Logged in') {
-          setProfile(response.data.profile);
-        } else {
-          console.error('Failed to set JWT token in cookie');
-        }
-      } catch (error) {
-        console.error('Error during login:', error);
-        setError(error);
-      }
-    },
-    onError: errorResponse => console.log(errorResponse),
-  });
+	const fetchProfile = async () => {
+		try {
+			const response = await axios.get(`${BASE_URL}/protected/profile`, {
+				withCredentials: true,
+			});
+			setProfile(response.data);
+		} catch {
+			setProfile(null);
+		}
+	};
 
-  // 프로필 정보를 가져오는 함수
-  const fetchProfile = async () => {
-    try {
-      const response = await axios.get(`${BASE_URL}/protected/profile`, { withCredentials: true });
-      setProfile(response.data);
-    } catch (err) {
-      if (err.response && err.response.status === 401) {
-        console.log('User is not authenticated');
-        setError(null);
-      } else {
-        console.error('Failed to fetch profile', err);
-        setError(err);
-      }
-    }
-  };
+	const logout = () => {
+		fetch(`${BASE_URL}/protected/logout`, {
+			method: "POST",
+			credentials: "include",
+		})
+			.then((r) => r.json())
+			.then(() => setProfile(null))
+			.catch(() => {});
+	};
 
-  // 로그아웃 함수
-  const logout = () => {
-    fetch(`${BASE_URL}/protected/logout`, {
-      method: 'POST',
-      credentials: 'include',
-    })
-      .then(response => response.json())
-      .then(data => {
-        console.log(data);
-        setProfile(null);
-      })
-      .catch(error => console.error('Error:', error));
-  };
+	useEffect(() => {
+		fetchProfile();
+	}, []);
 
-  // 특정 엔드포인트로 리다이렉트
-  const handleRedirect = () => {
-    window.location.href = `${BASE_URL}/protected/profile`;
-  };
+	return (
+		<div className="auth-page">
+			<aside className="auth-brand">
+				<div className="auth-brand-logo">
+					{Title}
+					<i className={Logo} />
+				</div>
+				<h1>Optimize your files smarter</h1>
+				<p>
+					Scan, analyze, and manage files across all your devices from one
+					unified dashboard.
+				</p>
+				<div className="auth-brand-features">
+					<div className="auth-feature-item">
+						<i className="fa-solid fa-magnifying-glass" />
+						<span>Deep file scanning &amp; deduplication</span>
+					</div>
+					<div className="auth-feature-item">
+						<i className="fa-solid fa-network-wired" />
+						<span>Real-time network monitoring</span>
+					</div>
+					<div className="auth-feature-item">
+						<i className="fa-solid fa-shield-halved" />
+						<span>Secure — your data stays yours</span>
+					</div>
+				</div>
+			</aside>
 
-  // 컴포넌트가 마운트될 때 프로필 정보를 가져옴
-  useEffect(() => {
-    fetchProfile();
-  }, []);
-
-  return (
-    <>
-    <Navbar title={Title} logo={Logo} menuItems={MenuItems['login']} />
-    <div className='profile-container'>
-      {profile ? (
-          <div className="profile-details">
-            <img src={profile.picture} alt="profile" className='profile-avathar' />
-            <div className="profile-content">
-              <h3>{profile.name}</h3>
-              <h5>{profile.email}</h5>
-            </div>
-            <div>
-              <button className='profile-button' onClick={logout}>Logout</button>
-            </div>
-            <button className='profile-button' onClick={handleRedirect}>Go to Specific Endpoint</button>
-          </div>
-        ) : (
-          <div className="landing-container">
-            <div className="profile-details">
-              <div className="landing-icon">
-                <img src={IMG_PROFILE} alt="empty profile" className='profile-avathar' />
-              </div>
-              <h4>Sign in to create profile!</h4>
-              <div>
-                <button className='profile-button' onClick={login}>Sign in with Google</button>
-              </div>
-              <div>
-                <button className='profile-button' onClick={handleRedirect}>Go to Specific Endpoint</button>
-              </div>
-            </div>
-          </div>
-        )
-      }
-    </div>
-    </>
-  );
+			<main className="auth-panel">
+				<div className="auth-card">
+					{profile ? (
+						<>
+							<div className="auth-card-header">
+								<h2>Welcome back</h2>
+								<p>You are signed in as {profile.email}</p>
+							</div>
+							<div className="profile-logged">
+								<img
+									src={profile.picture || IMG_PROFILE}
+									alt="profile"
+									className="profile-avathar"
+								/>
+								<div className="profile-name">{profile.name}</div>
+								<div className="profile-email">{profile.email}</div>
+								<div className="profile-actions">
+									<Link to="/dashboard" className="btn-full btn-accent" style={{ textDecoration: "none", textAlign: "center" }}>
+										Go to Dashboard
+									</Link>
+									<button className="btn-full btn-ghost" onClick={logout}>
+										Sign out
+									</button>
+								</div>
+							</div>
+						</>
+					) : (
+						<>
+							<div className="auth-card-header">
+								<h2>{isSignup ? "Create your account" : "Welcome back"}</h2>
+								<p>
+									{isSignup
+										? "Start optimizing your files in seconds."
+										: "Sign in to access your dashboard."}
+								</p>
+							</div>
+							<button className="google-btn" onClick={login}>
+								<GoogleIcon />
+								Continue with Google
+							</button>
+							<div className="auth-terms">
+								By continuing, you agree to our Terms of Service and Privacy
+								Policy.
+							</div>
+							<div className="auth-switch">
+								{isSignup ? (
+									<>Already have an account? <Link to="/login">Sign in</Link></>
+								) : (
+									<>No account yet? <Link to="/signup">Sign up free</Link></>
+								)}
+							</div>
+						</>
+					)}
+				</div>
+			</main>
+		</div>
+	);
 }
 
-export default Profile;
+export default AuthPage;

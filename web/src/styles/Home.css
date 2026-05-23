@@ -1,23 +1,62 @@
-/* styles.css */
 .section {
-    padding: 50px;
-    color: rgb(98, 91, 91);
-    min-height: 100vh; /* 각 섹션이 화면 전체 높이를 차지하도록 설정 */
-  }
-  
-  #home {
-    background-image: url('../images/background/home.png');
-    background-size: cover;
-    background-position: center;
-  }
-  
-  #features {
-    background-image: url('../images/background/features.png'); 
-    background-size: cover;
-    background-position: center;
-    color: rgb(22, 22, 22);
-  }
+	padding: 5rem 2rem;
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+	justify-content: center;
+}
 
-  #features p {
-    color: rgb(0, 0, 0); 
-  }
+.section h1,
+.section h2 {
+	font-size: clamp(2rem, 4vw, 3.5rem);
+	letter-spacing: -0.03em;
+	margin-bottom: 1rem;
+}
+
+.section p {
+	font-size: 1.125rem;
+	color: var(--color-text-muted);
+	max-width: 560px;
+	margin-bottom: 2rem;
+}
+
+.cta-button {
+	display: inline-flex;
+	align-items: center;
+	padding: 0.75rem 1.75rem;
+	background-color: var(--color-accent);
+	color: #ffffff;
+	border: none;
+	border-radius: var(--radius-sm);
+	font-size: 0.9rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background-color var(--duration) ease;
+}
+
+.cta-button:hover {
+	background-color: var(--color-accent-hover);
+}
+
+#home {
+	background-image: url("../images/background/home.png");
+	background-size: cover;
+	background-position: center;
+	color: #ffffff;
+}
+
+#home p {
+	color: rgba(255, 255, 255, 0.85);
+}
+
+#features {
+	background-image: url("../images/background/features.png");
+	background-size: cover;
+	background-position: center;
+}
+
+#features2 {
+	background-image: url("../images/background/features2.png");
+	background-size: cover;
+	background-position: center;
+}

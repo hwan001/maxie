@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"os"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -11,56 +12,53 @@ import (
 )
 
 func main() {
+	loadAgents()
+	if err := initFileDB(); err != nil {
+		log.Printf("filedb init failed: %v", err)
+	}
+
 	router := gin.Default()
 	store := cookie.NewStore([]byte("secret"))
 	router.Use(sessions.Sessions("session", store))
 
+	corsOrigin := os.Getenv("CORS_ALLOW_ORIGIN")
+	if corsOrigin == "" {
+		corsOrigin = "http://localhost:3000"
+	}
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"https://goserver.666lab.org"},
+		AllowOrigins:     []string{corsOrigin},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept", "X-Agent-Token"},
 		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
 
-	default_endpoint := "/api"
+	api := "/api"
 
-	// POST
-	router.POST(default_endpoint+"/auth/google", handleGoogleAuth)
-	router.POST(default_endpoint+"/client-data", receiveClientData)
+	router.POST(api+"/auth/google", handleGoogleAuth)
 
-	// GET
-	router.GET(default_endpoint+"/get-client-id", getClientID)
-	router.GET(default_endpoint+"/data", getData)
-	router.GET(default_endpoint+"/download/client/mac", func(c *gin.Context) {
-		log.Println("Request for mac client")
-		c.FileAttachment("./client/client-mac", "client")
-	})
-	router.GET(default_endpoint+"/download/client/linux", func(c *gin.Context) {
-		log.Println("Request for linux client")
-		c.FileAttachment("./client/client-linux", "client")
-	})
-	router.GET(default_endpoint+"/download/client/windows", func(c *gin.Context) {
-		log.Println("Request for windows client")
-		c.FileAttachment("./client/client-windows", "client.exe")
-	})
+	router.POST(api+"/agent/register", registerAgent)
+	router.GET(api+"/agents", listAgents)
+	router.PUT(api+"/agents/:id/drives", updateAgentDrives)
+	router.PUT(api+"/agents/:id/config", updateAgentConfig)
+	router.POST(api+"/agent/heartbeat", agentHeartbeat)
+	router.POST(api+"/agent/drives", agentUpdateDrives)
+	router.POST(api+"/agent/files", pushAgentFiles)
+	router.GET(api+"/agent/pending-actions", getPendingActionsHandler)
+	router.POST(api+"/agent/confirm-action", confirmActionHandler)
 
-	protected := router.Group(default_endpoint + "/protected")
+	router.GET(api+"/files", listFilesHandler)
+	router.GET(api+"/files/duplicates", getDuplicatesHandler)
+	router.DELETE(api+"/files", deleteFileHandler)
+
+	protected := router.Group(api + "/protected")
 	protected.Use(AuthMiddleware())
 	{
 		protected.GET("/", protectedEndpoint)
 		protected.GET("/profile", getProfile)
 		protected.POST("/logout", logout)
 	}
-
-	// 관리자만 접근 가능한 경로 그룹
-	// admin := router.Group(default_endpoint + "/admin")
-	// admin.Use(AuthMiddleware(), AdminMiddleware()) // 두 개의 미들웨어 적용
-	// {
-	//     admin.GET("/dashboard", getAdminDashboard)
-	//     admin.POST("/user", createUser)
-	// }
 
 	router.Run(":50000")
 }

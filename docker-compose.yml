@@ -1,10 +1,17 @@
-version: '3'
+version: '3.8'
+
 services:
   backend:
     build: ./server
     restart: unless-stopped
+    environment:
+      # 배포 서버 주소에 맞게 설정 (예: http://192.168.1.100:8080)
+      - CORS_ALLOW_ORIGIN=${CORS_ALLOW_ORIGIN:-http://localhost:8080}
+      # HTTPS 도메인 배포 시 쿠키 도메인 설정 (없으면 localhost로 동작)
+      - COOKIE_DOMAIN=${COOKIE_DOMAIN:-}
     volumes:
-      - /home/user/client:/root/client
+      # agent 등록 정보 및 파일 DB를 컨테이너 재시작 후에도 유지
+      - fileoptimizer_data:/root/.fileoptimizer
     networks:
       - fileoptimizer-network
 
@@ -18,13 +25,16 @@ services:
     build: ./nginx
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "${EXPOSE_PORT:-8080}:80"
     depends_on:
       - backend
       - frontend
     networks:
       - fileoptimizer-network
 
+volumes:
+  fileoptimizer_data:
+
 networks:
-  fileoptimizer-network :
+  fileoptimizer-network:
     driver: bridge

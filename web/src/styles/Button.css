@@ -1,88 +1,46 @@
-/* 버튼 겉 테두리 */
-:root {
-    --primary: #fff;
+.btn {
+	padding: 0.5rem 1.25rem;
+	border-radius: var(--radius-sm);
+	outline: none;
+	border: none;
+	cursor: pointer;
+	font-size: 0.875rem;
+	font-weight: 500;
+	transition: background-color var(--duration) ease, color var(--duration) ease,
+		border-color var(--duration) ease;
+	text-decoration: none;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
 }
 
-.btn{
-    padding: 8px 20px;
-    border-radius: 2px;
-    outline: none;
-    border: none;
-    cursor: pointer;
-    margin-left: 3px;
-    margin-right: 3px;
+.btn--primary {
+	background-color: var(--color-accent);
+	color: #ffffff;
+	border: 1px solid var(--color-accent);
 }
 
-.btn--primary{
-    background-color: var(--primary);
-    color: #242424;
-    border: 1px solid var(--primary);
+.btn--primary:hover {
+	background-color: var(--color-accent-hover);
+	border-color: var(--color-accent-hover);
 }
 
-/* 버튼 글자 */
 .btn--outline {
-    background-color: transparent;
-    color: rgba(255, 255, 255, 1);
-    padding:8px 20px;
-    border: 1px solid var(--primary);
-    transition: all 0.3s ease-out;
+	background-color: transparent;
+	color: var(--color-accent);
+	border: 1px solid var(--color-accent);
+}
+
+.btn--outline:hover {
+	background-color: var(--color-accent-light);
 }
 
 .btn--medium {
-    padding: 8px 20px;
-    font-size: 15px;
+	padding: 0.5rem 1.25rem;
+	font-size: 0.875rem;
 }
 
 .btn--large {
-    padding: 12px 26px;
-    font-size: 18px;
-}
-
-.btn--medium:hover, 
-.btn--large:hover{
-    background: white;
-    color: #242424;
-    transition: all 0.3s ease-out;
-}
-
-
-/* 모바일 전용 스타일 */
-.btn-mobile--small:hover,
-.btn-mobile--medium:hover {
-    background-color: yellow;
-    background: yellow;
-    color: #242424;
-    transition: all 0.3s ease-out;
-}
-
-.btn-mobile--outline {
-  padding: 8px 16px;
-  background-color: #777777;
-  border: none;
-  background-color: transparent;
-  color: rgba(255, 255, 255, 1);
-  border: 1px solid var(--primary);
-}
-  
-.btn-mobile--small {
-  padding: 6px 12px;
-  font-size: 8px;
-}
-  
-.btn-mobile--medium {
-  padding: 10px 20px;
-  font-size: 10px;
-}
-
-.link-mobile-1 {
-  display: block;
-  /* width: 100%; /* 버튼이 모바일 화면에서 전체 너비를 차지하게 설정 */
-  padding: 12px 20px; /* 여백 설정 */
-  font-size: 18px; /* 폰트 크기 설정 */
-  text-align: center;
-  color: #fff; /* 글자색 설정 */
-  background-color: #007bff; /* 배경색 설정 */
-  border: 1px solid; /* 테두리 제거 */
-  border-radius: 3px; /* 모서리 둥글게 */
-  text-decoration: none; /* 링크의 기본 밑줄 제거 */
+	padding: 0.75rem 1.75rem;
+	font-size: 1rem;
 }
