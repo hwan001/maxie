@@ -10,6 +10,10 @@ RUN npm install
 ARG REACT_APP_GOOGLE_CLIENT_ID
 ENV REACT_APP_GOOGLE_CLIENT_ID=$REACT_APP_GOOGLE_CLIENT_ID
 
+# Backend API base URL - docker-compose build args로 주입
+ARG REACT_APP_BASE_URL=""
+ENV REACT_APP_BASE_URL=$REACT_APP_BASE_URL
+
 RUN npm run build
 
 # run

@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./server
+      args:
+        - JWT_SECRET=${JWT_SECRET:-}
+        - REDIRECT_URI=postmessage
+    restart: unless-stopped
+    environment:
+      - CORS_ALLOW_ORIGIN=https://fileopt.avgmax.team
+      - COOKIE_DOMAIN=fileopt.avgmax.team
+    volumes:
+      - fileoptimizer_data:/root/.fileoptimizer
+    networks:
+      - fileoptimizer-network
+
+  frontend:
+    build:
+      context: ./web
+      args:
+        - REACT_APP_BASE_URL=https://fileopt.avgmax.team/api
+    restart: unless-stopped
+    networks:
+      - fileoptimizer-network
+
+  nginx:
+    build: ./nginx
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - fileoptimizer-network
+
+volumes:
+  fileoptimizer_data:
+
+networks:
+  fileoptimizer-network:
+    driver: bridge

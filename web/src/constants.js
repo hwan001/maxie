@@ -1,5 +1,5 @@
-export const DEBUG = true;
-export const BASE_URL='http://localhost:50000';
+export const DEBUG = process.env.NODE_ENV !== "production";
+export const BASE_URL = process.env.REACT_APP_BASE_URL || 'http://localhost:50000';
 
 export const Title = "File Optimizer";
 export const Logo = "fab fa-typo3";
