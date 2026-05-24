@@ -126,6 +126,11 @@
 	box-shadow: 0 0 0 3px var(--color-accent-light);
 }
 
+.google-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
 .google-btn svg {
 	flex-shrink: 0;
 }
@@ -150,6 +155,109 @@
 
 .auth-divider::before { left: 0; }
 .auth-divider::after { right: 0; }
+
+.guest-btn {
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 0.75rem;
+	padding: 0.75rem 1.25rem;
+	background: transparent;
+	border: 1.5px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	font-size: 0.9rem;
+	font-weight: 600;
+	color: var(--color-text-muted);
+	cursor: pointer;
+	transition: border-color var(--duration) ease, color var(--duration) ease,
+		box-shadow var(--duration) ease;
+}
+
+.guest-btn:hover:not(:disabled) {
+	border-color: var(--color-accent);
+	color: var(--color-accent);
+	box-shadow: 0 0 0 3px var(--color-accent-light);
+}
+
+.guest-btn:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
+}
+
+.guest-btn svg {
+	flex-shrink: 0;
+}
+
+/* Guest code display */
+.guest-code-box {
+	width: 100%;
+	background: var(--color-bg);
+	border: 1.5px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	padding: 1rem 1.25rem;
+	display: flex;
+	flex-direction: column;
+	gap: 0.5rem;
+}
+
+.guest-code-label {
+	font-size: 0.75rem;
+	font-weight: 600;
+	text-transform: uppercase;
+	letter-spacing: 0.06em;
+	color: var(--color-text-muted);
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+.guest-code-value {
+	font-family: "SF Mono", "Fira Code", "Fira Mono", "Roboto Mono", monospace;
+	font-size: 0.8rem;
+	letter-spacing: 0.04em;
+	color: var(--color-text);
+	word-break: break-all;
+	line-height: 1.5;
+}
+
+.guest-code-copy {
+	align-self: flex-start;
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.3rem 0.75rem;
+	font-size: 0.78rem;
+	font-weight: 600;
+	color: var(--color-accent);
+	background: var(--color-accent-light);
+	border: 1px solid transparent;
+	border-radius: var(--radius-sm);
+	cursor: pointer;
+	transition: background-color var(--duration) ease, border-color var(--duration) ease;
+}
+
+.guest-code-copy:hover {
+	background: var(--color-accent);
+	color: #ffffff;
+}
+
+.guest-code-expiry {
+	font-size: 0.75rem;
+	color: var(--color-text-muted);
+	display: flex;
+	align-items: center;
+	gap: 0.35rem;
+}
+
+.guest-code-hint {
+	font-size: 0.75rem;
+	color: var(--color-text-muted);
+	line-height: 1.6;
+	margin: 0;
+	padding-top: 0.25rem;
+	border-top: 1px solid var(--color-border);
+}
 
 .auth-terms {
 	margin-top: 1.5rem;

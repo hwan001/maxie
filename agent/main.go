@@ -149,7 +149,7 @@ func doRegister(applyMenuState func(), mStatus *systray.MenuItem) {
 		return
 	}
 
-	resp, err := registerWithServer(input.ServerURL, input.AgentName)
+	resp, err := registerWithServer(input.ServerURL, input.AgentName, input.UserID)
 	if err != nil {
 		log.Printf("registration failed: %v", err)
 		return
@@ -159,6 +159,7 @@ func doRegister(applyMenuState func(), mStatus *systray.MenuItem) {
 	cfg.AgentName = input.AgentName
 	cfg.Token = resp.Token
 	cfg.ServerURL = input.ServerURL
+	cfg.UserID = input.UserID
 	if err := saveConfig(cfg); err != nil {
 		log.Printf("save config failed: %v", err)
 	}
@@ -182,6 +183,8 @@ func doSettings() {
 		doChangeServer()
 	case "Scan Schedule":
 		doScanSchedule()
+	case "Link User Code":
+		doLinkUserCode()
 	case "Agent Info":
 		showInfoDialog(cfg)
 	}
@@ -239,6 +242,21 @@ func doRemoveDrive() {
 	// Tell the server immediately so it removes the drive and deletes its
 	// file records — without this the heartbeat would restore the drive.
 	go notifyServerDrives()
+}
+
+func doLinkUserCode() {
+	code, ok := showLinkUserCodeDialog(cfg.UserID)
+	if !ok {
+		return
+	}
+	if err := linkUserToServer(code); err != nil {
+		log.Printf("link user code failed: %v", err)
+		return
+	}
+	cfg.UserID = code
+	if err := saveConfig(cfg); err != nil {
+		log.Printf("save config failed: %v", err)
+	}
 }
 
 func doChangeServer() {

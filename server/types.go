@@ -22,17 +22,20 @@ type Claims struct {
 	Name    string `json:"name"`
 	Email   string `json:"email"`
 	Picture string `json:"picture"`
+	IsGuest bool   `json:"is_guest,omitempty"`
 	jwt.RegisteredClaims
 }
 
 type User struct {
-	ID      string `json:"id"`
-	Name    string `json:"name"`
-	Email   string `json:"email"`
-	Picture string `json:"picture"`
+	ID        string     `json:"id"`
+	Name      string     `json:"name"`
+	Email     string     `json:"email"`
+	Picture   string     `json:"picture"`
+	IsGuest   bool       `json:"is_guest,omitempty"`
+	CreatedAt time.Time  `json:"created_at,omitempty"`
+	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 }
 
-var users = map[string]User{}
 var jwtBlacklist = map[string]time.Time{}
 
 type ClientData struct {
@@ -91,6 +94,9 @@ type AgentRecord struct {
 	Drives              []DriveEntry `json:"drives"`
 	FileStats           FileStats    `json:"file_stats"`
 	ScanIntervalMinutes int          `json:"scan_interval_minutes"`
+	// UserID is the internal user UUID that owns this agent. Empty for legacy
+	// agents registered before user isolation was introduced.
+	UserID string `json:"user_id,omitempty"`
 	// DeletedPaths tracks drive paths explicitly removed via the web UI.
 	// Heartbeats from the agent will not re-add these paths.
 	DeletedPaths []string `json:"deleted_paths,omitempty"`

@@ -56,19 +56,24 @@ func handleGoogleAuth(c *gin.Context) {
 		return
 	}
 
-	id := profile["sub"].(string)
-	name := profile["name"].(string)
-	email := profile["email"].(string)
-	picture := profile["picture"].(string)
+	sub, _ := profile["sub"].(string)
+	name, _ := profile["name"].(string)
+	email, _ := profile["email"].(string)
+	picture, _ := profile["picture"].(string)
 
-	user := User{ID: id, Name: name, Email: email, Picture: picture}
-	users[user.ID] = user
+	user, err := upsertOAuthUser("google", sub, name, email, picture)
+	if err != nil {
+		log.Printf("upsertOAuthUser: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to store user"})
+		return
+	}
 
 	claims := Claims{
-		ID:      id,
-		Name:    name,
-		Email:   email,
-		Picture: picture,
+		ID:      user.ID,
+		Name:    user.Name,
+		Email:   user.Email,
+		Picture: user.Picture,
+		IsGuest: false,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 		},
@@ -92,6 +97,46 @@ func handleGoogleAuth(c *gin.Context) {
 	})
 
 	c.JSON(http.StatusOK, gin.H{"message": "Logged in", "profile": user})
+}
+
+func handleGuestAuth(c *gin.Context) {
+	user, err := createGuestUser()
+	if err != nil {
+		log.Printf("createGuestUser: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create guest session"})
+		return
+	}
+
+	expiry := *user.ExpiresAt
+
+	claims := Claims{
+		ID:      user.ID,
+		Name:    "Guest",
+		IsGuest: true,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(expiry),
+		},
+	}
+
+	jwtToken, err := jwt.NewWithClaims(jwt.SigningMethodHS256, claims).SignedString(jwtSecret)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to generate JWT"})
+		return
+	}
+
+	cookieDomain := os.Getenv("COOKIE_DOMAIN")
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     "jwt",
+		Value:    jwtToken,
+		Expires:  expiry,
+		HttpOnly: true,
+		Secure:   cookieDomain != "",
+		SameSite: http.SameSiteStrictMode,
+		Path:     "/",
+		Domain:   cookieDomain,
+	})
+
+	c.JSON(http.StatusOK, gin.H{"message": "Guest session created", "profile": user})
 }
 
 func AuthMiddleware() gin.HandlerFunc {
@@ -159,6 +204,7 @@ func registerAgent(c *gin.Context) {
 		Name      string     `json:"name"`
 		ServerURL string     `json:"server_url"`
 		Data      ClientData `json:"client_data"`
+		UserID    string     `json:"user_id"`
 	}
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -180,6 +226,7 @@ func registerAgent(c *gin.Context) {
 		RegisteredAt: time.Now(),
 		LastSeen:     time.Now(),
 		ClientData:   req.Data,
+		UserID:       req.UserID,
 	}
 
 	agentMu.Lock()
@@ -187,17 +234,35 @@ func registerAgent(c *gin.Context) {
 	agentMu.Unlock()
 
 	go saveAgents()
-	log.Printf("Agent registered: %s (%s)", req.Name, agentID)
+	log.Printf("Agent registered: %s (%s) user=%s", req.Name, agentID, req.UserID)
 	c.JSON(http.StatusOK, gin.H{"agent_id": agentID, "token": token})
 }
 
+// getUserAgentIDs returns all agent IDs owned by the given user.
+// Must NOT be called while agentMu is held.
+func getUserAgentIDs(userID string) []string {
+	agentMu.RLock()
+	defer agentMu.RUnlock()
+	var ids []string
+	for id, a := range agentStore {
+		if a.UserID == userID {
+			ids = append(ids, id)
+		}
+	}
+	return ids
+}
+
 func listAgents(c *gin.Context) {
+	claims := c.MustGet("user").(*Claims)
+
 	agentMu.RLock()
 	defer agentMu.RUnlock()
 
-	list := make([]*AgentRecord, 0, len(agentStore))
+	list := make([]*AgentRecord, 0)
 	for _, a := range agentStore {
-		list = append(list, a)
+		if a.UserID == claims.ID {
+			list = append(list, a)
+		}
 	}
 	c.JSON(http.StatusOK, gin.H{"agents": list})
 }
@@ -285,6 +350,7 @@ func agentHeartbeat(c *gin.Context) {
 }
 
 func updateAgentConfig(c *gin.Context) {
+	claims := c.MustGet("user").(*Claims)
 	agentID := c.Param("id")
 	var req struct {
 		ScanIntervalMinutes int `json:"scan_interval_minutes"`
@@ -300,6 +366,10 @@ func updateAgentConfig(c *gin.Context) {
 	agent, ok := agentStore[agentID]
 	if !ok {
 		c.JSON(http.StatusNotFound, gin.H{"error": "agent not found"})
+		return
+	}
+	if agent.UserID != claims.ID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
 		return
 	}
 
@@ -349,8 +419,34 @@ func pushAgentFiles(c *gin.Context) {
 }
 
 func listFilesHandler(c *gin.Context) {
+	claims := c.MustGet("user").(*Claims)
+	userAgentIDs := getUserAgentIDs(claims.ID)
+
+	// No agents linked to this user → nothing to show.
+	if len(userAgentIDs) == 0 {
+		c.JSON(http.StatusOK, gin.H{"files": []interface{}{}, "total": 0, "page": 1, "limit": 50})
+		return
+	}
+
+	requestedAgentID := c.Query("agent_id")
+	if requestedAgentID != "" {
+		// Verify the requested agent belongs to the authenticated user.
+		allowed := false
+		for _, id := range userAgentIDs {
+			if id == requestedAgentID {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+			return
+		}
+	}
+
 	q := FileQuery{
-		AgentID:   c.Query("agent_id"),
+		AgentID:   requestedAgentID,
+		AgentIDs:  userAgentIDs,
 		DriveType: c.Query("drive_type"),
 		Search:    c.Query("search"),
 		SortBy:    c.Query("sort_by"),
@@ -385,7 +481,31 @@ func listFilesHandler(c *gin.Context) {
 }
 
 func getDuplicatesHandler(c *gin.Context) {
-	groups, err := getDuplicateGroups(c.Query("agent_id"))
+	claims := c.MustGet("user").(*Claims)
+	userAgentIDs := getUserAgentIDs(claims.ID)
+
+	// No agents linked to this user → nothing to show.
+	if len(userAgentIDs) == 0 {
+		c.JSON(http.StatusOK, gin.H{"groups": []interface{}{}})
+		return
+	}
+
+	requestedAgentID := c.Query("agent_id")
+	if requestedAgentID != "" {
+		allowed := false
+		for _, id := range userAgentIDs {
+			if id == requestedAgentID {
+				allowed = true
+				break
+			}
+		}
+		if !allowed {
+			c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+			return
+		}
+	}
+
+	groups, err := getDuplicateGroups(requestedAgentID, userAgentIDs)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -407,6 +527,8 @@ func getDuplicatesHandler(c *gin.Context) {
 }
 
 func deleteFileHandler(c *gin.Context) {
+	claims := c.MustGet("user").(*Claims)
+
 	var req struct {
 		AgentID  string `json:"agent_id"`
 		FullPath string `json:"fullpath"`
@@ -419,6 +541,16 @@ func deleteFileHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "agent_id and fullpath required"})
 		return
 	}
+
+	// Verify the agent belongs to the authenticated user.
+	agentMu.RLock()
+	a, ok := agentStore[req.AgentID]
+	agentMu.RUnlock()
+	if !ok || a.UserID != claims.ID {
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
+		return
+	}
+
 	if err := addPendingAction(req.AgentID, req.FullPath, "delete"); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
@@ -500,6 +632,7 @@ func confirmActionHandler(c *gin.Context) {
 // associated file records deleted from the database synchronously before responding,
 // so the next page load reflects the removal immediately.
 func updateAgentDrives(c *gin.Context) {
+	claims := c.MustGet("user").(*Claims)
 	agentID := c.Param("id")
 	var req struct {
 		Drives []DriveEntry `json:"drives"`
@@ -515,6 +648,11 @@ func updateAgentDrives(c *gin.Context) {
 	if !ok {
 		agentMu.Unlock()
 		c.JSON(http.StatusNotFound, gin.H{"error": "agent not found"})
+		return
+	}
+	if agent.UserID != claims.ID {
+		agentMu.Unlock()
+		c.JSON(http.StatusForbidden, gin.H{"error": "access denied"})
 		return
 	}
 
@@ -672,6 +810,27 @@ func generateToken() string {
 	return hex.EncodeToString(b)
 }
 
+// generateUUID returns a random UUID v4 string.
+func generateUUID() string {
+	b := make([]byte, 16)
+	if _, err := rand.Read(b); err != nil {
+		panic(fmt.Sprintf("generateUUID: %v", err))
+	}
+	b[6] = (b[6] & 0x0f) | 0x40 // version 4
+	b[8] = (b[8] & 0x3f) | 0x80 // variant RFC 4122
+	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
+}
+
+// runCleanupTask runs on a ticker and removes expired guest users with all
+// their agents and file records. Intended to be started as a goroutine.
+func runCleanupTask() {
+	ticker := time.NewTicker(time.Hour)
+	defer ticker.Stop()
+	for range ticker.C {
+		cleanupExpiredGuests()
+	}
+}
+
 func agentsFilePath() string {
 	home, _ := os.UserHomeDir()
 	return filepath.Join(home, ".fileoptimizer", "agents.json")
@@ -707,4 +866,38 @@ func saveAgents() {
 	if err := os.WriteFile(path, data, 0600); err != nil {
 		log.Printf("failed to save agents: %v", err)
 	}
+}
+
+// linkAgentUser links an already-registered agent to a user account.
+// The agent authenticates with its token via X-Agent-Token header.
+// Body: { "user_id": "<uuid>" }
+func linkAgentUser(c *gin.Context) {
+	token := c.GetHeader("X-Agent-Token")
+	if token == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "missing token"})
+		return
+	}
+
+	var req struct {
+		UserID string `json:"user_id"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil || req.UserID == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "user_id required"})
+		return
+	}
+
+	agentMu.Lock()
+	defer agentMu.Unlock()
+
+	for _, a := range agentStore {
+		if a.Token == token {
+			a.UserID = req.UserID
+			go saveAgents()
+			log.Printf("agent %s linked to user %s", a.AgentID, req.UserID)
+			c.JSON(http.StatusOK, gin.H{"ok": true})
+			return
+		}
+	}
+
+	c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 }

@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import "../styles/Dashboard.css";
-import { Title, Logo, MenuItems } from "../constants";
+import { Title, Logo, MenuItems, BASE_URL } from "../constants";
 
 const OS_ICONS = {
 	darwin: "fa-brands fa-apple",
@@ -144,7 +144,7 @@ const Dashboard = () => {
 
 	const fetchData = () => {
 		setLoading(true);
-		axios.get("/api/agents")
+		axios.get(`${BASE_URL}/protected/agents`, { withCredentials: true })
 			.then(r => setAgents(r.data?.agents ?? []))
 			.catch(() => {})
 			.finally(() => setLoading(false));

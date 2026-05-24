@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link } from "react-router-dom";
 import axios from "axios";
 import { useGoogleLogin } from "@react-oauth/google";
 import "../styles/Login.css";
@@ -16,11 +16,21 @@ const GoogleIcon = () => (
 	</svg>
 );
 
-function AuthPage() {
-	const location = useLocation();
-	const isSignup = location.pathname === "/signup";
+const GuestIcon = () => (
+	<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+		<path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+		<circle cx="12" cy="7" r="4"/>
+	</svg>
+);
 
+const googleOAuthEnabled =
+	!!process.env.REACT_APP_GOOGLE_CLIENT_ID &&
+	process.env.REACT_APP_GOOGLE_CLIENT_ID !== "google-oauth-not-configured";
+
+function AuthPage() {
 	const [profile, setProfile] = useState(null);
+	const [copied, setCopied] = useState(false);
+	const [guestLoading, setGuestLoading] = useState(false);
 
 	const login = useGoogleLogin({
 		flow: "auth-code",
@@ -41,12 +51,38 @@ function AuthPage() {
 		onError: () => {},
 	});
 
+	const loginAsGuest = async () => {
+		setGuestLoading(true);
+		try {
+			const response = await axios.post(
+				`${BASE_URL}/auth/guest`,
+				{},
+				{ withCredentials: true }
+			);
+			if (response.data.profile) {
+				setProfile(response.data.profile);
+			}
+		} catch {
+			// guest creation failed
+		} finally {
+			setGuestLoading(false);
+		}
+	};
+
+	const copyUserCode = () => {
+		if (!profile?.id) return;
+		navigator.clipboard.writeText(profile.id).then(() => {
+			setCopied(true);
+			setTimeout(() => setCopied(false), 2000);
+		});
+	};
+
 	const fetchProfile = async () => {
 		try {
 			const response = await axios.get(`${BASE_URL}/protected/profile`, {
 				withCredentials: true,
 			});
-			setProfile(response.data);
+			setProfile(response.data.profile ?? response.data);
 		} catch {
 			setProfile(null);
 		}
@@ -99,19 +135,59 @@ function AuthPage() {
 					{profile ? (
 						<>
 							<div className="auth-card-header">
-								<h2>Welcome back</h2>
-								<p>You are signed in as {profile.email}</p>
+								<h2>Welcome{profile.is_guest ? ", Guest" : " back"}</h2>
+								<p>
+									{profile.is_guest
+										? "Your temporary session is active."
+										: `Signed in as ${profile.email}`}
+								</p>
 							</div>
 							<div className="profile-logged">
-								<img
-									src={profile.picture || IMG_PROFILE}
-									alt="profile"
-									className="profile-avathar"
-								/>
-								<div className="profile-name">{profile.name}</div>
-								<div className="profile-email">{profile.email}</div>
+								{!profile.is_guest && (
+									<img
+										src={profile.picture || IMG_PROFILE}
+										alt="profile"
+										className="profile-avathar"
+									/>
+								)}
+								<div className="profile-name">{profile.name || "Guest"}</div>
+								{!profile.is_guest && (
+									<div className="profile-email">{profile.email}</div>
+								)}
+
+								{profile.is_guest && (
+									<div className="guest-code-box">
+										<div className="guest-code-label">
+											<i className="fa-solid fa-key" /> Your User Code
+										</div>
+										<div className="guest-code-value">{profile.id}</div>
+										<button className="guest-code-copy" onClick={copyUserCode}>
+											{copied ? (
+												<><i className="fa-solid fa-check" /> Copied!</>
+											) : (
+												<><i className="fa-regular fa-copy" /> Copy</>
+											)}
+										</button>
+										{profile.expires_at && (
+											<div className="guest-code-expiry">
+												<i className="fa-regular fa-clock" />{" "}
+												Session expires{" "}
+												{new Date(profile.expires_at).toLocaleString()}
+											</div>
+										)}
+										<p className="guest-code-hint">
+											Paste this code when registering the desktop agent to link
+											your devices.
+										</p>
+									</div>
+								)}
+
 								<div className="profile-actions">
-									<Link to="/dashboard" className="btn-full btn-accent" style={{ textDecoration: "none", textAlign: "center" }}>
+									<Link
+										to="/dashboard"
+										className="btn-full btn-accent"
+										style={{ textDecoration: "none", textAlign: "center" }}
+									>
 										Go to Dashboard
 									</Link>
 									<button className="btn-full btn-ghost" onClick={logout}>
@@ -123,27 +199,38 @@ function AuthPage() {
 					) : (
 						<>
 							<div className="auth-card-header">
-								<h2>{isSignup ? "Create your account" : "Welcome back"}</h2>
-								<p>
-									{isSignup
-										? "Start optimizing your files in seconds."
-										: "Sign in to access your dashboard."}
-								</p>
+								<h2>Welcome</h2>
+								<p>Sign in to access your dashboard.</p>
 							</div>
-							<button className="google-btn" onClick={login}>
+							<button
+								className="google-btn"
+								onClick={googleOAuthEnabled ? login : undefined}
+								disabled={!googleOAuthEnabled}
+								title={
+									googleOAuthEnabled
+										? undefined
+										: "Set REACT_APP_GOOGLE_CLIENT_ID in web/.env to enable Google login"
+								}
+							>
 								<GoogleIcon />
-								Continue with Google
+								{googleOAuthEnabled
+									? "Continue with Google"
+									: "Google login not configured"}
+							</button>
+							<div className="auth-divider">
+								<span>or</span>
+							</div>
+							<button
+								className="guest-btn"
+								onClick={loginAsGuest}
+								disabled={guestLoading}
+							>
+								<GuestIcon />
+								{guestLoading ? "Creating session…" : "Continue as Guest"}
 							</button>
 							<div className="auth-terms">
-								By continuing, you agree to our Terms of Service and Privacy
-								Policy.
-							</div>
-							<div className="auth-switch">
-								{isSignup ? (
-									<>Already have an account? <Link to="/login">Sign in</Link></>
-								) : (
-									<>No account yet? <Link to="/signup">Sign up free</Link></>
-								)}
+								Guest sessions expire after 24 hours. Sign in with Google for
+								persistent access.
 							</div>
 						</>
 					)}

@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import "../styles/Dashboard.css";
-import { Title, Logo, MenuItems } from "../constants";
+import { Title, Logo, MenuItems, BASE_URL } from "../constants";
 
 const OS_ICONS = {
 	darwin: "fa-brands fa-apple",
@@ -215,7 +215,7 @@ function DrivesTab({ agent, onRefresh }) {
 	const persistDrives = async (newDrives) => {
 		setSaving(true);
 		try {
-			await axios.put(`/api/agents/${agent.agent_id}/drives`, { drives: newDrives });
+			await axios.put(`${BASE_URL}/protected/agents/${agent.agent_id}/drives`, { drives: newDrives }, { withCredentials: true });
 			setDrives(newDrives);
 			if (onRefresh) onRefresh();
 		} catch {
@@ -579,7 +579,7 @@ const Devices = () => {
 
 	const fetchData = () => {
 		setLoading(true);
-		axios.get("/api/agents")
+		axios.get(`${BASE_URL}/protected/agents`, { withCredentials: true })
 			.then(r => setAgents(r.data?.agents ?? []))
 			.catch(() => {})
 			.finally(() => setLoading(false));

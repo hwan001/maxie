@@ -53,6 +53,64 @@ go routine으로 프로그램 실행과 동시에 실행될 작업
 - 디렉토리 스캔 및 중복 파일 검사
 
 
+---
+
+## 빌드 명령어
+
+> 모든 빌드는 프로젝트 루트에서 실행합니다.
+
+### Agent 빌드
+
+Agent는 systray GUI 앱이므로 `-ldflags="-H windowsgui"` (Windows) 또는 `-ldflags="-s -w"` (macOS/Linux)를 사용합니다.
+
+| 플랫폼 | 아키텍처 | 명령어 | 출력 파일 |
+|--------|----------|--------|-----------|
+| **macOS** (Apple Silicon) | arm64 | `GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o fileoptimizer-agent ./agent/` | `fileoptimizer-agent` |
+| **macOS** (Intel) | amd64 | `GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o fileoptimizer-agent ./agent/` | `fileoptimizer-agent` |
+| **macOS** (Universal Binary) | arm64 + amd64 | 아래 참고 | `fileoptimizer-agent` |
+| **Linux** | amd64 | `GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o fileoptimizer-agent-linux ./agent/` | `fileoptimizer-agent-linux` |
+| **Linux** | arm64 | `GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o fileoptimizer-agent-linux-arm64 ./agent/` | `fileoptimizer-agent-linux-arm64` |
+| **Windows** | amd64 | `CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-H windowsgui" -o fileoptimizer-agent.exe ./agent/` | `fileoptimizer-agent.exe` |
+
+#### macOS Universal Binary (arm64 + amd64 합치기)
+```bash
+GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o fileoptimizer-agent-arm64 ./agent/
+GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o fileoptimizer-agent-amd64 ./agent/
+lipo -create -output fileoptimizer-agent fileoptimizer-agent-arm64 fileoptimizer-agent-amd64
+rm fileoptimizer-agent-arm64 fileoptimizer-agent-amd64
+```
+
+#### 한 번에 전체 플랫폼 빌드 (macOS에서 크로스 컴파일)
+```bash
+# Agent — 전체 플랫폼
+CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -ldflags="-s -w"          -o dist/fileoptimizer-agent-darwin-arm64   ./agent/
+CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w"          -o dist/fileoptimizer-agent-darwin-amd64   ./agent/
+CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w"          -o dist/fileoptimizer-agent-linux-amd64    ./agent/
+CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w"          -o dist/fileoptimizer-agent-linux-arm64    ./agent/
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-H windowsgui"  -o dist/fileoptimizer-agent-windows-amd64.exe ./agent/
+```
+
+### Server 빌드
+
+```bash
+# 현재 플랫폼 (로컬 실행)
+go build -ldflags="-s -w" -o fileoptimizer-server ./server/
+
+# Linux amd64 (Docker / 서버 배포용)
+GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o fileoptimizer-server-linux ./server/
+```
+
+### ldflags 설명
+
+| 플래그 | 설명 |
+|--------|------|
+| `-s` | 심볼 테이블 제거 → 바이너리 크기 감소 |
+| `-w` | DWARF 디버그 정보 제거 → 바이너리 크기 감소 |
+| `-H windowsgui` | Windows에서 콘솔 창 숨김 (GUI/Systray 앱 필수) |
+| `CGO_ENABLED=0` | 순수 Go 빌드, C 컴파일러 없이 크로스 컴파일 가능 |
+
+---
+
 ### 우분투 goenv, go 설치
 
 - .bashrc

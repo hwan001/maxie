@@ -50,6 +50,7 @@ type RegisterRequest struct {
 	Name      string    `json:"name"`
 	ServerURL string    `json:"server_url"`
 	Data      AgentData `json:"client_data"`
+	UserID    string    `json:"user_id,omitempty"`
 }
 
 type RegisterResponse struct {
@@ -135,7 +136,7 @@ func collectData() *AgentData {
 	return data
 }
 
-func registerWithServer(serverURL, name string) (*RegisterResponse, error) {
+func registerWithServer(serverURL, name, userID string) (*RegisterResponse, error) {
 	data := collectData()
 	hostname, _ := os.Hostname()
 	data.ClientID = hostname
@@ -144,6 +145,7 @@ func registerWithServer(serverURL, name string) (*RegisterResponse, error) {
 		Name:      name,
 		ServerURL: serverURL,
 		Data:      *data,
+		UserID:    userID,
 	}
 
 	body, err := json.Marshal(req)
@@ -151,7 +153,7 @@ func registerWithServer(serverURL, name string) (*RegisterResponse, error) {
 		return nil, err
 	}
 
-	resp, err := http.Post(serverURL+"/api/agent/register", "application/json", bytes.NewBuffer(body))
+	resp, err := http.Post(serverURL+"/agent/register", "application/json", bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err
 	}
@@ -209,7 +211,7 @@ func pushFiles(files []FileRecord) {
 			continue
 		}
 
-		req, err := http.NewRequest("POST", cfg.ServerURL+"/api/agent/files", bytes.NewBuffer(body))
+		req, err := http.NewRequest("POST", cfg.ServerURL+"/agent/files", bytes.NewBuffer(body))
 		if err != nil {
 			continue
 		}
@@ -242,7 +244,7 @@ func notifyServerDrives() {
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("POST", cfg.ServerURL+"/api/agent/drives", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", cfg.ServerURL+"/agent/drives", bytes.NewBuffer(body))
 	if err != nil {
 		return
 	}
@@ -263,7 +265,7 @@ func checkPendingActions() {
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("GET", cfg.ServerURL+"/api/agent/pending-actions", nil)
+	req, err := http.NewRequest("GET", cfg.ServerURL+"/agent/pending-actions", nil)
 	if err != nil {
 		return
 	}
@@ -307,7 +309,7 @@ func confirmAction(id int64, fullpath string) {
 	body, _ := json.Marshal(map[string]interface{}{"id": id, "fullpath": fullpath})
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("POST", cfg.ServerURL+"/api/agent/confirm-action", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", cfg.ServerURL+"/agent/confirm-action", bytes.NewBuffer(body))
 	if err != nil {
 		return
 	}
@@ -355,7 +357,7 @@ func syncData() {
 	}
 
 	client := &http.Client{Timeout: 10 * time.Second}
-	req, err := http.NewRequest("POST", cfg.ServerURL+"/api/agent/heartbeat", bytes.NewBuffer(body))
+	req, err := http.NewRequest("POST", cfg.ServerURL+"/agent/heartbeat", bytes.NewBuffer(body))
 	if err != nil {
 		return
 	}
@@ -392,7 +394,7 @@ func syncData() {
 		saveConfig(cfg)
 
 		if cfg.ServerURL != "" && cfg.AgentName != "" {
-			regResp, err := registerWithServer(cfg.ServerURL, cfg.AgentName)
+			regResp, err := registerWithServer(cfg.ServerURL, cfg.AgentName, cfg.UserID)
 			if err != nil {
 				log.Printf("auto re-registration failed: %v", err)
 				select {
@@ -412,4 +414,36 @@ func syncData() {
 		default:
 		}
 	}
+}
+
+// linkUserToServer sends the user code to the server so the agent is scoped
+// to that user's account. Uses the agent's existing token for authentication.
+func linkUserToServer(userID string) error {
+	if cfg.AgentID == "" || cfg.Token == "" {
+		return fmt.Errorf("agent not registered")
+	}
+
+	body, err := json.Marshal(map[string]string{"user_id": userID})
+	if err != nil {
+		return err
+	}
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	req, err := http.NewRequest("PUT", cfg.ServerURL+"/agent/user", bytes.NewBuffer(body))
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("X-Agent-Token", cfg.Token)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("server returned %d", resp.StatusCode)
+	}
+	return nil
 }

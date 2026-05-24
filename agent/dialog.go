@@ -13,6 +13,7 @@ import (
 type RegisterInput struct {
 	ServerURL string
 	AgentName string
+	UserID    string // user UUID from the web dashboard (optional for guest users)
 }
 
 func testServerConnection(url string) error {
@@ -62,22 +63,48 @@ func showRegisterDialog() (*RegisterInput, bool) {
 		return nil, false
 	}
 
+	// User code is optional — guests or OAuth users paste their UUID here so
+	// the server can scope this agent to their account. Skip by pressing Cancel.
+	userID := ""
+	if code, err := zenity.Entry(
+		"Paste your User Code from the web dashboard\n(leave empty or cancel to skip):",
+		zenity.Title("File Optimizer — User Code (optional)"),
+	); err == nil {
+		userID = strings.TrimSpace(code)
+	}
+
 	return &RegisterInput{
 		ServerURL: serverURL,
 		AgentName: strings.TrimSpace(agentName),
+		UserID:    userID,
 	}, true
 }
 
 func showSettingsAction() (string, bool) {
 	item, err := zenity.List(
 		"Select an action:",
-		[]string{"Add Drive", "Remove Drive", "Change Server URL", "Scan Schedule", "Agent Info"},
+		[]string{"Add Drive", "Remove Drive", "Change Server URL", "Scan Schedule", "Link User Code", "Agent Info"},
 		zenity.Title("File Optimizer — Settings"),
 	)
 	if err != nil {
 		return "", false
 	}
 	return item, true
+}
+
+func showLinkUserCodeDialog(current string) (string, bool) {
+	prompt := "Paste your User Code from the web dashboard:"
+	if current != "" {
+		prompt = fmt.Sprintf("Current User Code: %s\n\nPaste a new User Code to replace it:", current)
+	}
+	code, err := zenity.Entry(
+		prompt,
+		zenity.Title("File Optimizer — Link User Code"),
+	)
+	if err != nil || strings.TrimSpace(code) == "" {
+		return "", false
+	}
+	return strings.TrimSpace(code), true
 }
 
 func showScheduleDialog(currentMinutes int) (int, bool) {

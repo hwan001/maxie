@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import "../styles/Dashboard.css";
-import { Title, Logo, MenuItems } from "../constants";
+import { Title, Logo, MenuItems, BASE_URL } from "../constants";
 
 function fmtBytes(bytes) {
 	if (!bytes) return "0 B";
@@ -136,7 +136,7 @@ const Optimization = () => {
 
 	const fetchData = () => {
 		setLoading(true);
-		axios.get("/api/agents")
+		axios.get(`${BASE_URL}/protected/agents`, { withCredentials: true })
 			.then(r => setAgents(r.data?.agents ?? []))
 			.catch(() => {})
 			.finally(() => setLoading(false));

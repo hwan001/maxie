@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import "../styles/Dashboard.css";
-import { Title, Logo, MenuItems } from "../constants";
+import { Title, Logo, MenuItems, BASE_URL } from "../constants";
 
 const DRIVE_ICONS = {
 	google: "fa-brands fa-google",
@@ -101,6 +101,29 @@ function AllFilesTab({ agents }) {
 	const [groupView, setGroupView] = useState(false);
 	const [collapsedGroups, setCollapsedGroups] = useState({});
 
+	const tableWrapRef = useRef(null);
+	const dragRef = useRef({ dragging: false, startY: 0, startH: 0 });
+
+	const onDragStart = (e) => {
+		const el = tableWrapRef.current;
+		if (!el) return;
+		dragRef.current = { dragging: true, startY: e.clientY, startH: el.offsetHeight };
+		document.addEventListener("mousemove", onDragMove);
+		document.addEventListener("mouseup", onDragEnd);
+		e.preventDefault();
+	};
+	const onDragMove = (e) => {
+		if (!dragRef.current.dragging) return;
+		const delta = e.clientY - dragRef.current.startY;
+		const newH = Math.max(160, dragRef.current.startH + delta);
+		tableWrapRef.current.style.height = newH + "px";
+	};
+	const onDragEnd = () => {
+		dragRef.current.dragging = false;
+		document.removeEventListener("mousemove", onDragMove);
+		document.removeEventListener("mouseup", onDragEnd);
+	};
+
 	const totalPages = Math.max(1, Math.ceil(total / limit));
 
 	const fetchFiles = useCallback(() => {
@@ -110,7 +133,7 @@ function AllFilesTab({ agents }) {
 		if (agentFilter) params.agent_id = agentFilter;
 		if (driveFilter) params.drive_type = driveFilter;
 
-		axios.get("/api/files", { params })
+		axios.get(`${BASE_URL}/protected/files`, { params, withCredentials: true })
 			.then(r => {
 				setFiles(r.data?.files ?? []);
 				setTotal(r.data?.total ?? 0);
@@ -141,7 +164,7 @@ function AllFilesTab({ agents }) {
 		if (!window.confirm(`Delete ${basename(file.fullpath)}?\n\nThis will queue a delete action on the agent.`)) return;
 		setDeleting(file.fullpath);
 		try {
-			await axios.delete("/api/files", { data: { agent_id: file.agent_id, fullpath: file.fullpath } });
+			await axios.delete(`${BASE_URL}/protected/files`, { data: { agent_id: file.agent_id, fullpath: file.fullpath }, withCredentials: true });
 			fetchFiles();
 		} catch {
 			alert("Failed to queue delete action.");
@@ -264,8 +287,13 @@ function AllFilesTab({ agents }) {
 				</div>
 			) : groupView ? (
 				<>
-					<div className="files-drive-groups">
-						{renderGroupedView()}
+					<div className="files-table-wrap files-table-wrap--resizable" ref={tableWrapRef}>
+						<div className="files-drive-groups">
+							{renderGroupedView()}
+						</div>
+					</div>
+					<div className="files-resize-handle" onMouseDown={onDragStart} title="Drag to resize">
+						<i className="fa-solid fa-grip-lines" />
 					</div>
 					<div className="files-pagination">
 						<button className="page-btn" onClick={() => setPage(1)} disabled={page === 1}>
@@ -285,7 +313,7 @@ function AllFilesTab({ agents }) {
 				</>
 			) : (
 				<>
-					<div className="files-table-wrap">
+					<div className="files-table-wrap files-table-wrap--resizable" ref={tableWrapRef}>
 						<table className="data-table files-table">
 							<thead>
 								<tr>
@@ -309,6 +337,9 @@ function AllFilesTab({ agents }) {
 								))}
 							</tbody>
 						</table>
+					</div>
+					<div className="files-resize-handle" onMouseDown={onDragStart} title="Drag to resize">
+						<i className="fa-solid fa-grip-lines" />
 					</div>
 					<div className="files-pagination">
 						<button className="page-btn" onClick={() => setPage(1)} disabled={page === 1}>
@@ -345,7 +376,7 @@ function DuplicatesTab({ agents }) {
 	const fetchDupes = useCallback(() => {
 		setLoading(true);
 		const params = agentFilter ? { agent_id: agentFilter } : {};
-		axios.get("/api/files/duplicates", { params })
+		axios.get(`${BASE_URL}/protected/files/duplicates`, { params, withCredentials: true })
 			.then(r => setGroups(r.data?.groups ?? []))
 			.catch(() => {})
 			.finally(() => setLoading(false));
@@ -360,7 +391,7 @@ function DuplicatesTab({ agents }) {
 		if (!window.confirm(`Delete ${basename(file.fullpath)}?`)) return;
 		setDeleting(file.fullpath);
 		try {
-			await axios.delete("/api/files", { data: { agent_id: file.agent_id, fullpath: file.fullpath } });
+			await axios.delete(`${BASE_URL}/protected/files`, { data: { agent_id: file.agent_id, fullpath: file.fullpath }, withCredentials: true });
 			fetchDupes();
 		} catch {
 			alert("Failed to queue delete action.");
@@ -555,9 +586,9 @@ function ScanScheduleContent({ agents, onAgentsChange }) {
 	const saveInterval = async (agentId) => {
 		setSaving(agentId);
 		try {
-			await axios.put(`/api/agents/${agentId}/config`, {
+			await axios.put(`${BASE_URL}/protected/agents/${agentId}/config`, {
 				scan_interval_minutes: intervals[agentId],
-			});
+			}, { withCredentials: true });
 			setSaved(prev => ({ ...prev, [agentId]: true }));
 			setTimeout(() => setSaved(prev => ({ ...prev, [agentId]: false })), 2000);
 			if (onAgentsChange) onAgentsChange();
@@ -658,7 +689,7 @@ function DriveSettingsContent({ agents, onAgentsChange }) {
 		const agent = localAgents[agentIdx];
 		setSaving(agent.agent_id);
 		try {
-			await axios.put(`/api/agents/${agent.agent_id}/drives`, { drives: agent.drives });
+			await axios.put(`${BASE_URL}/protected/agents/${agent.agent_id}/drives`, { drives: agent.drives }, { withCredentials: true });
 			if (onAgentsChange) onAgentsChange();
 		} catch {
 			alert("Failed to save drive settings.");
@@ -830,7 +861,7 @@ const Files = () => {
 	const [tab, setTab] = useState("files");
 
 	const fetchAgents = () => {
-		axios.get("/api/agents")
+		axios.get(`${BASE_URL}/protected/agents`, { withCredentials: true })
 			.then(r => setAgents(r.data?.agents ?? []))
 			.catch(() => {});
 	};

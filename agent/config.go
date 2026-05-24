@@ -21,6 +21,9 @@ type Config struct {
 	ServerURL           string       `json:"server_url"`
 	Drives              []DriveEntry `json:"drives"`
 	ScanIntervalMinutes int          `json:"scan_interval_minutes"`
+	// UserID is the server-side user UUID that owns this agent. Set during
+	// registration so the server can scope agent data to the correct user.
+	UserID string `json:"user_id,omitempty"`
 }
 
 func configDir() string {

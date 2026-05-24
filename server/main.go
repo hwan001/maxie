@@ -16,6 +16,7 @@ func main() {
 	if err := initFileDB(); err != nil {
 		log.Printf("filedb init failed: %v", err)
 	}
+	go runCleanupTask()
 
 	router := gin.Default()
 	store := cookie.NewStore([]byte("secret"))
@@ -34,30 +35,32 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	api := "/api"
+	router.POST("/auth/google", handleGoogleAuth)
+	router.POST("/auth/guest", handleGuestAuth)
 
-	router.POST(api+"/auth/google", handleGoogleAuth)
+	// Agent-auth routes (X-Agent-Token, no JWT required)
+	router.POST("/agent/register", registerAgent)
+	router.POST("/agent/heartbeat", agentHeartbeat)
+	router.POST("/agent/drives", agentUpdateDrives)
+	router.POST("/agent/files", pushAgentFiles)
+	router.GET("/agent/pending-actions", getPendingActionsHandler)
+	router.POST("/agent/confirm-action", confirmActionHandler)
+	router.PUT("/agent/user", linkAgentUser)
 
-	router.POST(api+"/agent/register", registerAgent)
-	router.GET(api+"/agents", listAgents)
-	router.PUT(api+"/agents/:id/drives", updateAgentDrives)
-	router.PUT(api+"/agents/:id/config", updateAgentConfig)
-	router.POST(api+"/agent/heartbeat", agentHeartbeat)
-	router.POST(api+"/agent/drives", agentUpdateDrives)
-	router.POST(api+"/agent/files", pushAgentFiles)
-	router.GET(api+"/agent/pending-actions", getPendingActionsHandler)
-	router.POST(api+"/agent/confirm-action", confirmActionHandler)
-
-	router.GET(api+"/files", listFilesHandler)
-	router.GET(api+"/files/duplicates", getDuplicatesHandler)
-	router.DELETE(api+"/files", deleteFileHandler)
-
-	protected := router.Group(api + "/protected")
+	protected := router.Group("/protected")
 	protected.Use(AuthMiddleware())
 	{
 		protected.GET("/", protectedEndpoint)
 		protected.GET("/profile", getProfile)
 		protected.POST("/logout", logout)
+
+		// Web UI routes (JWT cookie required)
+		protected.GET("/agents", listAgents)
+		protected.PUT("/agents/:id/drives", updateAgentDrives)
+		protected.PUT("/agents/:id/config", updateAgentConfig)
+		protected.GET("/files", listFilesHandler)
+		protected.GET("/files/duplicates", getDuplicatesHandler)
+		protected.DELETE("/files", deleteFileHandler)
 	}
 
 	router.Run(":50000")
