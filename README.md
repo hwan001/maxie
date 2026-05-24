@@ -61,33 +61,62 @@ go routine으로 프로그램 실행과 동시에 실행될 작업
 
 ### Agent 빌드
 
-Agent는 systray GUI 앱이므로 `-ldflags="-H windowsgui"` (Windows) 또는 `-ldflags="-s -w"` (macOS/Linux)를 사용합니다.
+Agent는 `getlantern/systray` 기반 tray 앱입니다.
+- **macOS / Linux**: Cocoa(macOS) 또는 GTK(Linux) 바인딩을 사용하므로 CGO가 반드시 필요합니다.
+- **Windows**: Win32 API를 순수 Go로 구현하므로 `CGO_ENABLED=0` 크로스 컴파일이 가능합니다.
 
 | 플랫폼 | 아키텍처 | 명령어 | 출력 파일 |
 |--------|----------|--------|-----------|
 | **macOS** (Apple Silicon) | arm64 | `GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o fileoptimizer-agent ./agent/` | `fileoptimizer-agent` |
-| **macOS** (Intel) | amd64 | `GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o fileoptimizer-agent ./agent/` | `fileoptimizer-agent` |
+| **macOS** (Intel) | amd64 | `CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o fileoptimizer-agent ./agent/` | `fileoptimizer-agent` |
 | **macOS** (Universal Binary) | arm64 + amd64 | 아래 참고 | `fileoptimizer-agent` |
-| **Linux** | amd64 | `GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -ldflags="-s -w" -o fileoptimizer-agent-linux ./agent/` | `fileoptimizer-agent-linux` |
-| **Linux** | arm64 | `GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -ldflags="-s -w" -o fileoptimizer-agent-linux-arm64 ./agent/` | `fileoptimizer-agent-linux-arm64` |
-| **Windows** | amd64 | `CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-H windowsgui" -o fileoptimizer-agent.exe ./agent/` | `fileoptimizer-agent.exe` |
+| **Linux** | amd64 / arm64 | 아래 참고 (네이티브 빌드 필요) | `fileoptimizer-agent` |
+| **Windows** | amd64 | `CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-H windowsgui -s -w" -o fileoptimizer-agent.exe ./agent/` | `fileoptimizer-agent.exe` |
 
 #### macOS Universal Binary (arm64 + amd64 합치기)
+
+> Apple Silicon(arm64) macOS에서 실행합니다.
+
 ```bash
+# arm64는 네이티브 빌드
 GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o fileoptimizer-agent-arm64 ./agent/
-GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o fileoptimizer-agent-amd64 ./agent/
+
+# amd64는 크로스 아키텍처 → CGO_ENABLED=1 명시 필요
+CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o fileoptimizer-agent-amd64 ./agent/
+
 lipo -create -output fileoptimizer-agent fileoptimizer-agent-arm64 fileoptimizer-agent-amd64
 rm fileoptimizer-agent-arm64 fileoptimizer-agent-amd64
 ```
 
-#### 한 번에 전체 플랫폼 빌드 (macOS에서 크로스 컴파일)
+#### Linux 빌드 주의사항
+
+Linux용 systray는 GTK3 + AppIndicator 라이브러리가 필요해 **macOS에서 크로스 컴파일 불가**합니다.
+Linux 머신 또는 GTK 헤더가 포함된 Docker 환경에서 네이티브로 빌드해야 합니다.
+
 ```bash
-# Agent — 전체 플랫폼
-CGO_ENABLED=0 GOOS=darwin  GOARCH=arm64 go build -ldflags="-s -w"          -o dist/fileoptimizer-agent-darwin-arm64   ./agent/
-CGO_ENABLED=0 GOOS=darwin  GOARCH=amd64 go build -ldflags="-s -w"          -o dist/fileoptimizer-agent-darwin-amd64   ./agent/
-CGO_ENABLED=0 GOOS=linux   GOARCH=amd64 go build -ldflags="-s -w"          -o dist/fileoptimizer-agent-linux-amd64    ./agent/
-CGO_ENABLED=0 GOOS=linux   GOARCH=arm64 go build -ldflags="-s -w"          -o dist/fileoptimizer-agent-linux-arm64    ./agent/
-CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-H windowsgui"  -o dist/fileoptimizer-agent-windows-amd64.exe ./agent/
+# Linux 머신에서 직접 실행 (빌드 전 의존성 설치 필요)
+# Ubuntu/Debian: sudo apt install libgtk-3-dev libappindicator3-dev
+GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o fileoptimizer-agent ./agent/
+```
+
+#### macOS에서 한 번에 빌드 (Windows 포함)
+
+```bash
+mkdir -p dist
+
+# macOS arm64 (네이티브)
+GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" \
+  -o dist/fileoptimizer-agent-darwin-arm64 ./agent/
+
+# macOS amd64 (크로스 아키텍처, CGO_ENABLED=1 명시)
+CGO_ENABLED=1 GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" \
+  -o dist/fileoptimizer-agent-darwin-amd64 ./agent/
+
+# Windows amd64 (CGO 불필요, 크로스 컴파일 가능)
+CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-H windowsgui -s -w" \
+  -o dist/fileoptimizer-agent-windows-amd64.exe ./agent/
+
+# Linux는 Linux 머신에서 별도 빌드 (위 Linux 빌드 주의사항 참고)
 ```
 
 ### Server 빌드
@@ -97,7 +126,7 @@ CGO_ENABLED=0 GOOS=windows GOARCH=amd64 go build -ldflags="-H windowsgui"  -o di
 go build -ldflags="-s -w" -o fileoptimizer-server ./server/
 
 # Linux amd64 (Docker / 서버 배포용)
-GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o fileoptimizer-server-linux ./server/
+CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o fileoptimizer-server-linux ./server/
 ```
 
 ### ldflags 설명
@@ -106,8 +135,9 @@ GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o fileoptimizer-server-linux 
 |--------|------|
 | `-s` | 심볼 테이블 제거 → 바이너리 크기 감소 |
 | `-w` | DWARF 디버그 정보 제거 → 바이너리 크기 감소 |
-| `-H windowsgui` | Windows에서 콘솔 창 숨김 (GUI/Systray 앱 필수) |
-| `CGO_ENABLED=0` | 순수 Go 빌드, C 컴파일러 없이 크로스 컴파일 가능 |
+| `-H windowsgui` | Windows에서 콘솔 창 숨김 (systray 앱 필수) |
+| `CGO_ENABLED=0` | 순수 Go 빌드 — Windows 크로스 컴파일 시 사용 |
+| `CGO_ENABLED=1` | CGO 활성화 — macOS 크로스 아키텍처 빌드 시 명시 필요 |
 
 ---
 
@@ -137,9 +167,6 @@ goenv version
 goenv uninstall 1.22.2
 ```
 
-
-```
-```
 
 - 서버 연결
   - 인증(정보가 있는지 확인)
