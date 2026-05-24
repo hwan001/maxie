@@ -243,11 +243,15 @@ func getDuplicateGroups(agentID string, agentIDs []string) ([]DuplicateGroup, er
 	// d (subquery) finds all hashes that appear more than once, then we JOIN
 	// back to get every file row for those hashes in one round-trip.
 
-	// Build WHERE clause based on scoping parameters.
-	buildWhere := func() (string, []interface{}) {
-		if agentID != "" {
-			return "WHERE agent_id = ?", []interface{}{agentID}
-		}
+	// Both the inner subquery (counting duplicates) and the outer query must
+	// always scope to ALL user agents. If we restricted the inner query to a
+	// single agent when agentID != "", a file that exists once on agent A and
+	// once on agent B would each have COUNT=1 per agent, so HAVING cnt > 1
+	// would never fire and the cross-agent duplicate would be invisible.
+	//
+	// Instead we always count across all user agents, fetch every copy, then
+	// post-filter in Go when the caller wants results scoped to one agent.
+	buildUserScopeWhere := func() (string, []interface{}) {
 		if len(agentIDs) > 0 {
 			placeholders := strings.Repeat("?,", len(agentIDs))
 			placeholders = placeholders[:len(placeholders)-1]
@@ -257,11 +261,12 @@ func getDuplicateGroups(agentID string, agentIDs []string) ([]DuplicateGroup, er
 			}
 			return "WHERE agent_id IN (" + placeholders + ")", args
 		}
-		return "", nil
+		// Fallback: agentIDs is empty but agentID was provided — scope to that
+		// single agent (within-agent duplicates only; cross-agent not possible).
+		return "WHERE agent_id = ?", []interface{}{agentID}
 	}
 
-	innerWhere, innerArgs := buildWhere()
-	outerWhere, outerArgs := buildWhere()
+	scopeWhere, scopeArgs := buildUserScopeWhere()
 
 	query := fmt.Sprintf(`
 		SELECT f.agent_id, f.fullpath, f.size, f.modified_at, f.created_at,
@@ -276,9 +281,9 @@ func getDuplicateGroups(agentID string, agentIDs []string) ([]DuplicateGroup, er
 		) d ON f.hash = d.hash
 		%s
 		ORDER BY d.size DESC, f.hash, f.modified_at DESC
-	`, innerWhere, outerWhere)
+	`, scopeWhere, scopeWhere)
 
-	args := append(innerArgs, outerArgs...)
+	args := append(scopeArgs, scopeArgs...)
 	rows, err := fileDB.Query(query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("getDuplicateGroups: %w", err)
@@ -324,6 +329,23 @@ func getDuplicateGroups(agentID string, agentIDs []string) ([]DuplicateGroup, er
 	for _, hash := range order {
 		groups = append(groups, *groupMap[hash])
 	}
+
+	// When a specific agent was requested, keep only groups that contain at
+	// least one file from that agent. We still return all copies in those
+	// groups (from all agents) so the UI can show where each duplicate lives.
+	if agentID != "" {
+		filtered := groups[:0]
+		for _, g := range groups {
+			for _, f := range g.Files {
+				if f.AgentID == agentID {
+					filtered = append(filtered, g)
+					break
+				}
+			}
+		}
+		groups = filtered
+	}
+
 	return groups, nil
 }
 
