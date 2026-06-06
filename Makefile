@@ -11,6 +11,9 @@ GO_IMAGE    = golang:1.25-bookworm
 # Single-quoted value avoids the outer double-quote being closed early.
 DOCKER_LDFLAGS = -ldflags='-s -w'
 
+# VCS stamping fails inside Docker (no git history); disable it explicitly.
+DOCKER_BUILD_FLAGS = -buildvcs=false
+
 # appindicator was renamed in Debian Bookworm.
 APPINDICATOR = libayatana-appindicator3-dev
 
@@ -91,7 +94,7 @@ else
 		bash -c "apt-get update -qq && \
 		         apt-get install -y -qq libgtk-3-dev $(APPINDICATOR) 2>/dev/null && \
 		         CGO_ENABLED=1 GOOS=linux GOARCH=amd64 \
-		         go build $(DOCKER_LDFLAGS) -o $(DIST)/$(BINARY)-linux-amd64 $(AGENT)"
+		         go build $(DOCKER_LDFLAGS) $(DOCKER_BUILD_FLAGS) -o $(DIST)/$(BINARY)-linux-amd64 $(AGENT)"
 endif
 
 # ── Linux arm64 ───────────────────────────────────────────────────────────────
@@ -115,7 +118,7 @@ else
 		bash -c "apt-get update -qq && \
 		         apt-get install -y -qq libgtk-3-dev $(APPINDICATOR) 2>/dev/null && \
 		         CGO_ENABLED=1 GOOS=linux GOARCH=arm64 \
-		         go build $(DOCKER_LDFLAGS) -o $(DIST)/$(BINARY)-linux-arm64 $(AGENT)"
+		         go build $(DOCKER_LDFLAGS) $(DOCKER_BUILD_FLAGS) -o $(DIST)/$(BINARY)-linux-arm64 $(AGENT)"
 endif
 
 # ── Windows ───────────────────────────────────────────────────────────────────
