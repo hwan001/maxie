@@ -69,7 +69,7 @@ type FileQueryResult struct {
 
 func fileDBPath() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".fileoptimizer", "files.db")
+	return filepath.Join(home, ".maxie", "files.db")
 }
 
 func initFileDB() error {

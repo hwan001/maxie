@@ -1,4 +1,4 @@
-BINARY      = fileoptimizer-agent
+BINARY      = maxie-agent
 AGENT       = ./agent/
 LDFLAGS     = -ldflags="-s -w"
 WIN_LDFLAGS = -ldflags="-H windowsgui -s -w"

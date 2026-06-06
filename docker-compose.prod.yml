@@ -6,12 +6,13 @@ services:
       context: ./server
     restart: unless-stopped
     environment:
-      - CORS_ALLOW_ORIGIN=https://fileopt.miiml.org
-      - COOKIE_DOMAIN=fileopt.miiml.org
+      - CORS_ALLOW_ORIGIN=https://maxie.miiml.org
+      - COOKIE_DOMAIN=maxie.miiml.org
       - REDIRECT_URI=postmessage
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
-      - JWT_SECRET=${JWT_SECRET:-}
+      - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret-change-me}
+      - SESSION_SECRET=${SESSION_SECRET:-dev-session-secret-change-me}
     volumes:
       - maxie_data:/root/.maxie
     networks:
@@ -21,7 +22,7 @@ services:
     build:
       context: ./web
       args:
-        - REACT_APP_BASE_URL=https://backend/api
+        - REACT_APP_BASE_URL=/api
         - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID:-}
     restart: unless-stopped
     networks:

@@ -35,7 +35,7 @@ func showRegisterDialog() (*RegisterInput, bool) {
 		var err error
 		serverURL, err = zenity.Entry(
 			"Enter server URL (e.g. https://server.domain.com:",
-			zenity.Title("File Optimizer — Register Agent"),
+			zenity.Title("Maxie — Register Agent"),
 			zenity.EntryText("https://"),
 		)
 		if err != nil || strings.TrimSpace(serverURL) == "" {
@@ -56,7 +56,7 @@ func showRegisterDialog() (*RegisterInput, bool) {
 
 	agentName, err := zenity.Entry(
 		"Enter a name for this agent:",
-		zenity.Title("File Optimizer — Register Agent"),
+		zenity.Title("Maxie — Register Agent"),
 		zenity.EntryText(defaultAgentName()),
 	)
 	if err != nil || strings.TrimSpace(agentName) == "" {
@@ -68,7 +68,7 @@ func showRegisterDialog() (*RegisterInput, bool) {
 	userID := ""
 	if code, err := zenity.Entry(
 		"Paste your User Code from the web dashboard\n(leave empty or cancel to skip):",
-		zenity.Title("File Optimizer — User Code (optional)"),
+		zenity.Title("Maxie — User Code (optional)"),
 	); err == nil {
 		userID = strings.TrimSpace(code)
 	}
@@ -84,7 +84,7 @@ func showSettingsAction() (string, bool) {
 	item, err := zenity.List(
 		"Select an action:",
 		[]string{"Add Drive", "Remove Drive", "Change Server URL", "Scan Schedule", "Link User Code", "Agent Info"},
-		zenity.Title("File Optimizer — Settings"),
+		zenity.Title("Maxie — Settings"),
 	)
 	if err != nil {
 		return "", false
@@ -99,7 +99,7 @@ func showLinkUserCodeDialog(current string) (string, bool) {
 	}
 	code, err := zenity.Entry(
 		prompt,
-		zenity.Title("File Optimizer — Link User Code"),
+		zenity.Title("Maxie — Link User Code"),
 	)
 	if err != nil || strings.TrimSpace(code) == "" {
 		return "", false
@@ -138,7 +138,7 @@ func showScheduleDialog(currentMinutes int) (int, bool) {
 	chosen, err := zenity.List(
 		fmt.Sprintf("Select scan interval (current: %s):", currentLabel),
 		labels,
-		zenity.Title("File Optimizer — Scan Schedule"),
+		zenity.Title("Maxie — Scan Schedule"),
 	)
 	if err != nil {
 		return 0, false
@@ -155,7 +155,7 @@ func showScheduleDialog(currentMinutes int) (int, bool) {
 func showChangeServerDialog(current string) (string, bool) {
 	url, err := zenity.Entry(
 		"Enter new server URL:",
-		zenity.Title("File Optimizer — Change Server"),
+		zenity.Title("Maxie — Change Server"),
 		zenity.EntryText(current),
 	)
 	if err != nil || strings.TrimSpace(url) == "" {
@@ -212,7 +212,7 @@ func showInfoDialog(c *Config) {
 	for _, d := range c.Drives {
 		msg += fmt.Sprintf("\n  [%s] %s  (%s)", d.DriveType, d.Label, d.Path)
 	}
-	zenity.Info(msg, zenity.Title("File Optimizer Agent"))
+	zenity.Info(msg, zenity.Title("Maxie Agent"))
 }
 
 func showRemoveDriveDialog(drives []DriveEntry) (int, bool) {

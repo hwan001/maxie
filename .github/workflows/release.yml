@@ -24,7 +24,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: darwin
-          path: dist/agents/fileoptimizer-agent-darwin
+          path: dist/agents/maxie-agent-darwin
 
   build-linux-windows:
     runs-on: ubuntu-latest

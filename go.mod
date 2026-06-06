@@ -1,4 +1,4 @@
-module fileoptimizer
+module maxie
 
 go 1.25.0
 

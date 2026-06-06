@@ -152,28 +152,28 @@ const AGENT_DOWNLOADS = [
 		icon: "fa-brands fa-apple",
 		label: "macOS",
 		desc: "Universal Binary (Apple Silicon + Intel)",
-		file: "fileoptimizer-agent-darwin",
+		file: "maxie-agent-darwin",
 	},
 	{
 		key: "linux-amd64",
 		icon: "fa-brands fa-linux",
 		label: "Linux x86_64",
 		desc: "amd64 (Ubuntu, Debian, CentOS…)",
-		file: "fileoptimizer-agent-linux-amd64",
+		file: "maxie-agent-linux-amd64",
 	},
 	{
 		key: "linux-arm64",
 		icon: "fa-brands fa-linux",
 		label: "Linux ARM64",
 		desc: "arm64 (Raspberry Pi, AWS Graviton…)",
-		file: "fileoptimizer-agent-linux-arm64",
+		file: "maxie-agent-linux-arm64",
 	},
 	{
 		key: "windows",
 		icon: "fa-brands fa-windows",
 		label: "Windows",
 		desc: "x86_64 (.exe)",
-		file: "fileoptimizer-agent-windows-amd64.exe",
+		file: "maxie-agent-windows-amd64.exe",
 	},
 ];
 
