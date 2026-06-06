@@ -217,49 +217,56 @@ function AgentMap({ agents }) {
 		return geo?.lat != null && geo?.lon != null;
 	});
 
-	if (geoAgents.length === 0) return null;
-
-	const center = [
+	const center = geoAgents.length > 0 ? [
 		geoAgents.reduce((s, a) => s + a.client_data.geo_location.lat, 0) / geoAgents.length,
 		geoAgents.reduce((s, a) => s + a.client_data.geo_location.lon, 0) / geoAgents.length,
-	];
+	] : [20, 0];
 
 	return (
 		<div className="agent-map-section">
 			<div className="agent-map-header">
 				<i className="fa-solid fa-earth-asia" />
 				<h2>Agent Locations</h2>
-				<span className="agent-map-count">{geoAgents.length} located</span>
+				<span className="agent-map-count">
+					{geoAgents.length > 0 ? `${geoAgents.length} located` : "pending"}
+				</span>
 			</div>
-			<MapContainer
-				center={center}
-				zoom={geoAgents.length === 1 ? 6 : 3}
-				className="agent-map"
-				scrollWheelZoom={false}
-			>
-				<TileLayer
-					attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-					url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-				/>
-				{geoAgents.map(a => {
-					const geo = a.client_data.geo_location;
-					const online = isOnline(a.last_seen);
-					return (
-						<Marker key={a.agent_id} position={[geo.lat, geo.lon]}>
-							<Popup>
-								<div className="map-popup">
-									<div className="map-popup-name">
-										<span className={`map-popup-dot ${online ? "online" : "offline"}`} />
-										{a.name || a.agent_id}
+			{geoAgents.length === 0 ? (
+				<div className="agent-map-empty">
+					<i className="fa-solid fa-location-dot" />
+					<span>Location data not yet available — will appear after the next agent sync</span>
+				</div>
+			) : (
+				<MapContainer
+					center={center}
+					zoom={geoAgents.length === 1 ? 6 : 3}
+					className="agent-map"
+					scrollWheelZoom={false}
+				>
+					<TileLayer
+						attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+						url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+					/>
+					{geoAgents.map(a => {
+						const geo = a.client_data.geo_location;
+						const online = isOnline(a.last_seen);
+						return (
+							<Marker key={a.agent_id} position={[geo.lat, geo.lon]}>
+								<Popup>
+									<div className="map-popup">
+										<div className="map-popup-name">
+											<span className={`map-popup-dot ${online ? "online" : "offline"}`} />
+											{a.name || a.agent_id}
+										</div>
+										{geo.city && <div className="map-popup-loc">{geo.city}{geo.country ? `, ${geo.country}` : ""}</div>}
+										<div className="map-popup-coords">{geo.lat.toFixed(4)}, {geo.lon.toFixed(4)}</div>
 									</div>
-									{geo.city && <div className="map-popup-loc">{geo.city}{geo.country ? `, ${geo.country}` : ""}</div>}
-									<div className="map-popup-coords">{geo.lat.toFixed(4)}, {geo.lon.toFixed(4)}</div>
-								</div>
-							</Popup>
-						</Marker>
-					);
-				})}
-			</MapContainer>
+								</Popup>
+							</Marker>
+						);
+					})}
+				</MapContainer>
+			)}
 		</div>
 	);
 }

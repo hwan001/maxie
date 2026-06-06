@@ -2218,6 +2218,24 @@
 	overflow: hidden;
 }
 
+.agent-map-empty {
+	display: flex;
+	align-items: center;
+	gap: 0.6rem;
+	height: 80px;
+	padding: 0 1rem;
+	border-radius: var(--radius);
+	border: 1px dashed var(--color-border);
+	color: var(--color-text-muted);
+	font-size: 0.82rem;
+}
+
+.agent-map-empty i {
+	font-size: 1rem;
+	color: var(--color-accent);
+	flex-shrink: 0;
+}
+
 .map-popup {
 	min-width: 130px;
 }

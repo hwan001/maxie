@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"os/exec"
@@ -56,7 +57,7 @@ type GeoLocation struct {
 	Lat      float64 `json:"lat,omitempty"`
 	Lon      float64 `json:"lon,omitempty"`
 	Timezone string  `json:"timezone,omitempty"`
-	Source   string  `json:"source"` // always "ip-api"
+	Source   string  `json:"source"`
 }
 
 // fetchPublicIP performs the actual HTTP request for the public IP.
@@ -132,17 +133,14 @@ func getARPNeighbors() []NetworkDevice {
 	return devices
 }
 
-// fetchGeoLocation performs the actual HTTP request for IP-based geolocation.
-// Uses ipapi.co (free tier, HTTPS) instead of ip-api.com (HTTP-only on free plan).
-func fetchGeoLocation() *GeoLocation {
-	client := &http.Client{Timeout: 5 * time.Second}
+// fetchGeoLocationIpapi tries ipapi.co (free tier, HTTPS, 1000 req/day).
+func fetchGeoLocationIpapi(client *http.Client) *GeoLocation {
 	resp, err := client.Get("https://ipapi.co/json/")
 	if err != nil {
 		return nil
 	}
 	defer resp.Body.Close()
 
-	// ipapi.co returns an "error" field on failure.
 	var result struct {
 		Error       bool    `json:"error"`
 		CountryName string  `json:"country_name"`
@@ -152,10 +150,10 @@ func fetchGeoLocation() *GeoLocation {
 		Longitude   float64 `json:"longitude"`
 		Timezone    string  `json:"timezone"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil || result.Error {
 		return nil
 	}
-	if result.Error {
+	if result.Latitude == 0 && result.Longitude == 0 {
 		return nil
 	}
 	return &GeoLocation{
@@ -167,6 +165,49 @@ func fetchGeoLocation() *GeoLocation {
 		Timezone: result.Timezone,
 		Source:   "ipapi.co",
 	}
+}
+
+// fetchGeoLocationIpinfo tries ipinfo.io as a fallback (50k req/month free).
+func fetchGeoLocationIpinfo(client *http.Client) *GeoLocation {
+	resp, err := client.Get("https://ipinfo.io/json")
+	if err != nil {
+		return nil
+	}
+	defer resp.Body.Close()
+
+	var result struct {
+		Country  string `json:"country"`
+		Region   string `json:"region"`
+		City     string `json:"city"`
+		Loc      string `json:"loc"` // "lat,lon"
+		Timezone string `json:"timezone"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil || result.Loc == "" {
+		return nil
+	}
+
+	var lat, lon float64
+	if _, err := fmt.Sscanf(result.Loc, "%f,%f", &lat, &lon); err != nil || (lat == 0 && lon == 0) {
+		return nil
+	}
+	return &GeoLocation{
+		Country:  result.Country,
+		Region:   result.Region,
+		City:     result.City,
+		Lat:      lat,
+		Lon:      lon,
+		Timezone: result.Timezone,
+		Source:   "ipinfo.io",
+	}
+}
+
+// fetchGeoLocation tries ipapi.co first, falls back to ipinfo.io.
+func fetchGeoLocation() *GeoLocation {
+	client := &http.Client{Timeout: 5 * time.Second}
+	if geo := fetchGeoLocationIpapi(client); geo != nil {
+		return geo
+	}
+	return fetchGeoLocationIpinfo(client)
 }
 
 // getGeoLocation returns approximate location inferred from the public IP.
