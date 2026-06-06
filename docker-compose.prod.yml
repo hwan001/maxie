@@ -13,9 +13,9 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - JWT_SECRET=${JWT_SECRET:-}
     volumes:
-      - fileoptimizer_data:/root/.fileoptimizer
+      - maxie_data:/root/.maxie
     networks:
-      - fileoptimizer-network
+      - maxie-network
 
   frontend:
     build:
@@ -25,7 +25,7 @@ services:
         - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID:-}
     restart: unless-stopped
     networks:
-      - fileoptimizer-network
+      - maxie-network
 
   nginx:
     build: ./nginx
@@ -36,11 +36,11 @@ services:
       - backend
       - frontend
     networks:
-      - fileoptimizer-network
+      - maxie-network
 
 volumes:
-  fileoptimizer_data:
+  maxie_data:
 
 networks:
-  fileoptimizer-network:
+  maxie-network:
     driver: bridge
