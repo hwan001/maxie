@@ -62,6 +62,27 @@ func upsertFile(r FileRecord) error {
 	return err
 }
 
+func getAllCachedFiles() ([]FileRecord, error) {
+	rows, err := db.Query(`SELECT fullpath, size, modified_at, created_at, hash, drive_type, synced_at FROM files`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var records []FileRecord
+	for rows.Next() {
+		var r FileRecord
+		var modAt, crAt, syncAt int64
+		if err := rows.Scan(&r.FullPath, &r.Size, &modAt, &crAt, &r.Hash, &r.DriveType, &syncAt); err != nil {
+			continue
+		}
+		r.ModifiedAt = time.Unix(modAt, 0)
+		r.CreatedAt = time.Unix(crAt, 0)
+		r.SyncedAt = time.Unix(syncAt, 0)
+		records = append(records, r)
+	}
+	return records, rows.Err()
+}
+
 func getCachedFile(fullpath string) (*FileRecord, error) {
 	row := db.QueryRow(`SELECT fullpath, size, modified_at, created_at, hash, drive_type, synced_at FROM files WHERE fullpath = ?`, fullpath)
 	var r FileRecord
