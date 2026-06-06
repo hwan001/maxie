@@ -21,7 +21,7 @@ services:
     build:
       context: ./web
       args:
-        - REACT_APP_BASE_URL=https://backend/api
+        - REACT_APP_BASE_URL=https://fileopt.miiml.org/api
         - REACT_APP_GOOGLE_CLIENT_ID=${REACT_APP_GOOGLE_CLIENT_ID:-}
     restart: unless-stopped
     networks:
