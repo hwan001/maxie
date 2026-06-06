@@ -5,12 +5,15 @@ package main
 import (
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 )
 
 // scanWiFiNetworks returns nearby Wi-Fi access points using netsh.
 func scanWiFiNetworks() []WiFiNetwork {
-	out, err := exec.Command("netsh", "wlan", "show", "networks", "mode=bssid").Output()
+	cmd := exec.Command("netsh", "wlan", "show", "networks", "mode=bssid")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	out, err := cmd.Output()
 	if err != nil {
 		return nil
 	}
@@ -62,7 +65,9 @@ func scanWiFiNetworks() []WiFiNetwork {
 
 // getWiFiHistory returns the list of Wi-Fi profiles saved on the machine.
 func getWiFiHistory() []string {
-	out, err := exec.Command("netsh", "wlan", "show", "profiles").Output()
+	cmd := exec.Command("netsh", "wlan", "show", "profiles")
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	out, err := cmd.Output()
 	if err != nil {
 		return nil
 	}

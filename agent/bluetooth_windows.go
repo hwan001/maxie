@@ -5,6 +5,7 @@ package main
 import (
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 )
 
@@ -14,7 +15,9 @@ func scanBluetoothDevices() []BluetoothDevice {
 	script := `Get-PnpDevice -Class Bluetooth | ` +
 		`ForEach-Object { $_.FriendlyName + '|' + $_.Status }`
 
-	out, err := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", script).Output()
+	cmd := exec.Command("powershell", "-NoProfile", "-NonInteractive", "-Command", script)
+	cmd.SysProcAttr = &syscall.SysProcAttr{HideWindow: true}
+	out, err := cmd.Output()
 	if err != nil {
 		return nil
 	}

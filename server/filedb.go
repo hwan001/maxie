@@ -118,6 +118,12 @@ func initFileDB() error {
 	return initUserTables()
 }
 
+func countFilesForAgent(agentID string) int {
+	var n int
+	fileDB.QueryRow(`SELECT COUNT(*) FROM files WHERE agent_id = ?`, agentID).Scan(&n)
+	return n
+}
+
 func upsertFileBatch(agentID string, records []AgentFileRecord) error {
 	tx, err := fileDB.Begin()
 	if err != nil {

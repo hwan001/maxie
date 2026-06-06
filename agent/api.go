@@ -432,6 +432,7 @@ func syncData() {
 		var hbResp struct {
 			Drives              []DriveEntry `json:"drives"`
 			ScanIntervalMinutes int          `json:"scan_interval_minutes"`
+			ServerFileCount     int          `json:"server_file_count"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&hbResp); err == nil {
 			// Always update drives from server — an empty slice means the server
@@ -441,6 +442,24 @@ func syncData() {
 				cfg.ScanIntervalMinutes = hbResp.ScanIntervalMinutes
 			}
 			saveConfig(cfg)
+
+			// If the server has fewer files than the local cache, push all
+			// local files so the dashboard is in sync. This recovers from a
+			// failed initial push or a server-side data loss.
+			localStats := computeFileStats("")
+			if hbResp.ServerFileCount < localStats.TotalFiles {
+				log.Printf("server has %d files but local cache has %d — triggering re-sync", hbResp.ServerFileCount, localStats.TotalFiles)
+				go func() {
+					all, err := getAllCachedFiles()
+					if err != nil {
+						log.Printf("re-sync: failed to read local cache: %v", err)
+						return
+					}
+					if len(all) > 0 {
+						pushFiles(all)
+					}
+				}()
+			}
 		}
 		return
 	}
