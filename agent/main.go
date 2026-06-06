@@ -38,9 +38,9 @@ func main() {
 
 func onReady() {
 	systray.SetIcon(getIdleIcon())
-	systray.SetTooltip("File Optimizer Agent")
+	systray.SetTooltip("Maxie Agent")
 
-	mTitle := systray.AddMenuItem("File Optimizer Agent", "")
+	mTitle := systray.AddMenuItem("Maxie Agent", "")
 	mTitle.Disable()
 
 	// Unregistered items

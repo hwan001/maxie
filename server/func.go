@@ -863,7 +863,7 @@ func runCleanupTask() {
 
 func agentsFilePath() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".fileoptimizer", "agents.json")
+	return filepath.Join(home, ".maxie", "agents.json")
 }
 
 func loadAgents() {
