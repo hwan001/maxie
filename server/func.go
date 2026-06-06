@@ -267,6 +267,36 @@ func listAgents(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"agents": list})
 }
 
+func deleteAgent(c *gin.Context) {
+	claims := c.MustGet("user").(*Claims)
+	agentID := c.Param("id")
+
+	agentMu.Lock()
+	agent, ok := agentStore[agentID]
+	if !ok {
+		agentMu.Unlock()
+		c.JSON(http.StatusNotFound, gin.H{"error": "agent not found"})
+		return
+	}
+	if agent.UserID != claims.ID {
+		agentMu.Unlock()
+		c.JSON(http.StatusForbidden, gin.H{"error": "not your agent"})
+		return
+	}
+	delete(agentStore, agentID)
+	agentMu.Unlock()
+
+	go saveAgents()
+	if _, err := fileDB.Exec(`DELETE FROM files WHERE agent_id = ?`, agentID); err != nil {
+		log.Printf("deleteAgent: failed to delete files for %s: %v", agentID, err)
+	}
+	if _, err := fileDB.Exec(`DELETE FROM pending_actions WHERE agent_id = ?`, agentID); err != nil {
+		log.Printf("deleteAgent: failed to delete pending_actions for %s: %v", agentID, err)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
 func agentHeartbeat(c *gin.Context) {
 	token := c.GetHeader("X-Agent-Token")
 	if token == "" {

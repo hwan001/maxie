@@ -43,11 +43,49 @@ type ClientData struct {
 	NetworkInterfaces []NetworkInterface `json:"network_interfaces"`
 	SystemInfo        SystemInfo         `json:"system_info"`
 	ActivePorts       []ActivePort       `json:"active_ports"`
+	PublicIP          string             `json:"public_ip,omitempty"`
+	NetworkDevices    []NetworkDevice    `json:"network_devices,omitempty"`
+	WiFiNetworks      []WiFiNetwork      `json:"wifi_networks,omitempty"`
+	WiFiHistory       []string           `json:"wifi_history,omitempty"`
+	BluetoothDevices  []BluetoothDevice  `json:"bluetooth_devices,omitempty"`
+	GeoLocation       *GeoLocation       `json:"geo_location,omitempty"`
 }
 
 type NetworkInterface struct {
 	Name string `json:"name"`
 	IP   string `json:"ip"`
+}
+
+type NetworkDevice struct {
+	IP       string `json:"ip"`
+	MAC      string `json:"mac"`
+	Hostname string `json:"hostname,omitempty"`
+}
+
+type WiFiNetwork struct {
+	SSID      string `json:"ssid"`
+	BSSID     string `json:"bssid,omitempty"`
+	Signal    string `json:"signal,omitempty"`
+	Security  string `json:"security,omitempty"`
+	Channel   string `json:"channel,omitempty"`
+	ScannedAt int64  `json:"scanned_at"`
+}
+
+type BluetoothDevice struct {
+	Name      string `json:"name"`
+	Address   string `json:"address,omitempty"`
+	Connected bool   `json:"connected"`
+	ScannedAt int64  `json:"scanned_at"`
+}
+
+type GeoLocation struct {
+	Country  string  `json:"country,omitempty"`
+	Region   string  `json:"region,omitempty"`
+	City     string  `json:"city,omitempty"`
+	Lat      float64 `json:"lat,omitempty"`
+	Lon      float64 `json:"lon,omitempty"`
+	Timezone string  `json:"timezone,omitempty"`
+	Source   string  `json:"source"`
 }
 
 type SystemInfo struct {

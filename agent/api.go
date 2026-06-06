@@ -44,6 +44,12 @@ type AgentData struct {
 	NetworkInterfaces []NetworkInterface `json:"network_interfaces"`
 	SystemInfo        SystemInfo         `json:"system_info"`
 	ActivePorts       []ActivePort       `json:"active_ports"`
+	PublicIP          string             `json:"public_ip,omitempty"`
+	NetworkDevices    []NetworkDevice    `json:"network_devices,omitempty"`
+	WiFiNetworks      []WiFiNetwork      `json:"wifi_networks,omitempty"`
+	WiFiHistory       []string           `json:"wifi_history,omitempty"`
+	BluetoothDevices  []BluetoothDevice  `json:"bluetooth_devices,omitempty"`
+	GeoLocation       *GeoLocation       `json:"geo_location,omitempty"`
 }
 
 type RegisterRequest struct {
@@ -129,6 +135,58 @@ func collectData() *AgentData {
 		}
 		mu.Lock()
 		data.ActivePorts = ports
+		mu.Unlock()
+	}()
+
+	// Public IP
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		ip := getPublicIP()
+		mu.Lock()
+		data.PublicIP = ip
+		mu.Unlock()
+	}()
+
+	// ARP neighbors (nearby network devices)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		devs := getARPNeighbors()
+		mu.Lock()
+		data.NetworkDevices = devs
+		mu.Unlock()
+	}()
+
+	// Wi-Fi scan + history
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		nets := scanWiFiNetworks()
+		hist := getWiFiHistory()
+		mu.Lock()
+		data.WiFiNetworks = nets
+		data.WiFiHistory = hist
+		mu.Unlock()
+	}()
+
+	// Bluetooth scan
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		btDevs := scanBluetoothDevices()
+		mu.Lock()
+		data.BluetoothDevices = btDevs
+		mu.Unlock()
+	}()
+
+	// IP-based geolocation
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		loc := getGeoLocation()
+		mu.Lock()
+		data.GeoLocation = loc
 		mu.Unlock()
 	}()
 

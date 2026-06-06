@@ -31,6 +31,7 @@ function AuthPage() {
 	const [profile, setProfile] = useState(null);
 	const [copied, setCopied] = useState(false);
 	const [guestLoading, setGuestLoading] = useState(false);
+	const [consented, setConsented] = useState(false);
 
 	const login = useGoogleLogin({
 		flow: "auth-code",
@@ -202,12 +203,28 @@ function AuthPage() {
 								<h2>Welcome</h2>
 								<p>Sign in to access your dashboard.</p>
 							</div>
+							<label className="auth-consent">
+								<input
+									type="checkbox"
+									checked={consented}
+									onChange={e => setConsented(e.target.checked)}
+								/>
+								<span>
+									개인정보 수집·이용에 동의합니다.{" "}
+									<span className="auth-consent-detail">
+										(서비스 제공 목적으로 이메일·기기 식별자 등 최소한의 정보를
+										수집하며, 회원 탈퇴 시 즉시 파기됩니다.)
+									</span>
+								</span>
+							</label>
 							<button
 								className="google-btn"
 								onClick={googleOAuthEnabled ? login : undefined}
-								disabled={!googleOAuthEnabled}
+								disabled={!googleOAuthEnabled || !consented}
 								title={
-									googleOAuthEnabled
+									!consented
+										? "개인정보 수집 동의 후 이용하실 수 있습니다"
+										: googleOAuthEnabled
 										? undefined
 										: "Set REACT_APP_GOOGLE_CLIENT_ID in web/.env to enable Google login"
 								}
@@ -223,7 +240,8 @@ function AuthPage() {
 							<button
 								className="guest-btn"
 								onClick={loginAsGuest}
-								disabled={guestLoading}
+								disabled={guestLoading || !consented}
+								title={!consented ? "개인정보 수집 동의 후 이용하실 수 있습니다" : undefined}
 							>
 								<GuestIcon />
 								{guestLoading ? "Creating session…" : "Continue as Guest"}

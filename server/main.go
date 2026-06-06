@@ -56,6 +56,7 @@ func main() {
 
 		// Web UI routes (JWT cookie required)
 		protected.GET("/agents", listAgents)
+		protected.DELETE("/agents/:id", deleteAgent)
 		protected.PUT("/agents/:id/drives", updateAgentDrives)
 		protected.PUT("/agents/:id/config", updateAgentConfig)
 		protected.GET("/files", listFilesHandler)

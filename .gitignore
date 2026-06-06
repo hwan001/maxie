@@ -24,16 +24,12 @@ go.work.sum
 # env file
 .env
 
-
-# secret files
-*secret.js
-*secret.go
-secrets/
-
 # IDE files
 .DS_Store
-PLAN.md
+PLAN*.md
 
 # binary files
 agent/agent
+agent/fileoptimizer-agent
 server/server
+dist/

@@ -55,11 +55,62 @@ go routine으로 프로그램 실행과 동시에 실행될 작업
 
 ---
 
-## 빌드 명령어
+## 빌드 및 배포
 
-> 모든 빌드는 프로젝트 루트에서 실행합니다.
+> 모든 명령은 프로젝트 루트에서 실행합니다.
 
-### Agent 빌드
+### Makefile (권장)
+
+```bash
+make all          # macOS(Universal) + Linux amd64/arm64 + Windows 동시 빌드
+                  # Linux 빌드는 Docker 필요
+                  # → dist/agents/ 에 바이너리 생성
+
+make local        # macOS + Windows 만 (Docker 없이 빌드 가능)
+
+make darwin-universal   # macOS Universal Binary 만
+make linux-amd64        # Linux amd64 (Docker 필요)
+make linux-arm64        # Linux arm64 (Docker 필요)
+make windows            # Windows amd64 만
+
+make deploy       # make all 후 docker compose up -d --build
+make clean        # dist/ 디렉터리 삭제
+```
+
+> **플랫폼별 CGO 요구사항**
+>
+> | 플랫폼 | CGO | 비고 |
+> |--------|-----|------|
+> | macOS (arm64/amd64) | ✅ 필요 | Cocoa 바인딩 |
+> | Linux amd64/arm64 | ✅ 필요 | GTK3 바인딩 — **Docker 사용** |
+> | Windows amd64 | ❌ 불필요 | 순수 Go 구현, macOS에서 크로스 컴파일 가능 |
+
+빌드 결과물 위치:
+
+```
+dist/
+└── agents/
+    ├── fileoptimizer-agent-darwin          ← macOS Universal
+    ├── fileoptimizer-agent-linux-amd64
+    ├── fileoptimizer-agent-linux-arm64
+    └── fileoptimizer-agent-windows-amd64.exe
+```
+
+> **배포 플로우 (권장)**
+> ```sh
+> # 에이전트 코드 수정 후
+> make deploy
+>
+> # 단계별로 실행하려면
+> make all
+> docker compose up -d --build
+> ```
+
+nginx가 `dist/agents/` 를 `/agents/` 경로로 서빙하므로, 웹 대시보드 → **Download Agent** 버튼이 자동으로 연결됩니다.
+
+---
+
+### Agent 수동 빌드 (Makefile 없이)
 
 Agent는 `getlantern/systray` 기반 tray 앱입니다.
 - **macOS / Linux**: Cocoa(macOS) 또는 GTK(Linux) 바인딩을 사용하므로 CGO가 반드시 필요합니다.

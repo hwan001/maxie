@@ -259,6 +259,31 @@
 	border-top: 1px solid var(--color-border);
 }
 
+.auth-consent {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.5rem;
+	margin-bottom: 1rem;
+	font-size: 0.8rem;
+	color: var(--color-text-muted);
+	line-height: 1.5;
+	cursor: pointer;
+}
+
+.auth-consent input[type="checkbox"] {
+	margin-top: 0.15rem;
+	flex-shrink: 0;
+	width: 1rem;
+	height: 1rem;
+	accent-color: var(--color-accent);
+	cursor: pointer;
+}
+
+.auth-consent-detail {
+	font-size: 0.73rem;
+	opacity: 0.8;
+}
+
 .auth-terms {
 	margin-top: 1.5rem;
 	font-size: 0.75rem;

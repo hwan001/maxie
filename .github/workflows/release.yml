@@ -1,0 +1,78 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-darwin:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build darwin universal
+        run: make darwin-universal
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: darwin
+          path: dist/agents/fileoptimizer-agent-darwin
+
+  build-linux-windows:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install linux build dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libgtk-3-dev libayatana-appindicator3-dev
+
+      - name: Set up QEMU (for linux-arm64 docker build)
+        uses: docker/setup-qemu-action@v3
+
+      - name: Build linux-amd64
+        run: make linux-amd64
+
+      - name: Build linux-arm64
+        run: make linux-arm64
+
+      - name: Build windows
+        run: make windows
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-windows
+          path: dist/agents/
+
+  release:
+    needs: [build-darwin, build-linux-windows]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: darwin
+          path: dist/agents/
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-windows
+          path: dist/agents/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/agents/*
+          generate_release_notes: true

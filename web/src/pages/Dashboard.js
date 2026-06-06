@@ -1,9 +1,20 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
+import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
+import L from "leaflet";
+import "leaflet/dist/leaflet.css";
 import Navbar from "../components/Navbar";
 import "../styles/Dashboard.css";
-import { Title, Logo, MenuItems, BASE_URL } from "../constants";
+import { Title, Logo, MenuItems, BASE_URL, AGENT_RELEASE_BASE_URL } from "../constants";
+
+// Fix default Leaflet marker icons broken by webpack
+delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+	iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
+	iconUrl: require("leaflet/dist/images/marker-icon.png"),
+	shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
+});
 
 const OS_ICONS = {
 	darwin: "fa-brands fa-apple",
@@ -135,6 +146,124 @@ function StatCard({ icon, label, value, sub }) {
 	);
 }
 
+const AGENT_DOWNLOADS = [
+	{
+		key: "darwin",
+		icon: "fa-brands fa-apple",
+		label: "macOS",
+		desc: "Universal Binary (Apple Silicon + Intel)",
+		file: "fileoptimizer-agent-darwin",
+	},
+	{
+		key: "linux-amd64",
+		icon: "fa-brands fa-linux",
+		label: "Linux x86_64",
+		desc: "amd64 (Ubuntu, Debian, CentOS…)",
+		file: "fileoptimizer-agent-linux-amd64",
+	},
+	{
+		key: "linux-arm64",
+		icon: "fa-brands fa-linux",
+		label: "Linux ARM64",
+		desc: "arm64 (Raspberry Pi, AWS Graviton…)",
+		file: "fileoptimizer-agent-linux-arm64",
+	},
+	{
+		key: "windows",
+		icon: "fa-brands fa-windows",
+		label: "Windows",
+		desc: "x86_64 (.exe)",
+		file: "fileoptimizer-agent-windows-amd64.exe",
+	},
+];
+
+function AgentDownloadSection() {
+	return (
+		<div className="agent-download-section">
+			<div className="agent-download-header">
+				<i className="fa-solid fa-download" />
+				<h2>Download Agent</h2>
+				<span className="agent-download-badge">latest</span>
+			</div>
+			<p className="agent-download-desc">
+				Install the agent on each device you want to monitor.
+				Run it once — it registers automatically to your account.
+			</p>
+			<div className="agent-download-grid">
+				{AGENT_DOWNLOADS.map((d) => (
+					<a
+						key={d.key}
+						href={`${AGENT_RELEASE_BASE_URL}/${d.file}`}
+						target="_blank"
+						rel="noreferrer"
+						className="agent-download-card"
+					>
+						<i className={`agent-dl-os-icon ${d.icon}`} />
+						<div className="agent-dl-info">
+							<div className="agent-dl-label">{d.label}</div>
+							<div className="agent-dl-desc">{d.desc}</div>
+						</div>
+						<i className="fa-solid fa-arrow-down agent-dl-arrow" />
+					</a>
+				))}
+			</div>
+		</div>
+	);
+}
+
+function AgentMap({ agents }) {
+	const geoAgents = agents.filter(a => {
+		const geo = a.client_data?.geo_location;
+		return geo?.lat != null && geo?.lon != null;
+	});
+
+	if (geoAgents.length === 0) return null;
+
+	const center = [
+		geoAgents.reduce((s, a) => s + a.client_data.geo_location.lat, 0) / geoAgents.length,
+		geoAgents.reduce((s, a) => s + a.client_data.geo_location.lon, 0) / geoAgents.length,
+	];
+
+	return (
+		<div className="agent-map-section">
+			<div className="agent-map-header">
+				<i className="fa-solid fa-earth-asia" />
+				<h2>Agent Locations</h2>
+				<span className="agent-map-count">{geoAgents.length} located</span>
+			</div>
+			<MapContainer
+				center={center}
+				zoom={geoAgents.length === 1 ? 6 : 3}
+				className="agent-map"
+				scrollWheelZoom={false}
+			>
+				<TileLayer
+					attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+					url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+				/>
+				{geoAgents.map(a => {
+					const geo = a.client_data.geo_location;
+					const online = isOnline(a.last_seen);
+					return (
+						<Marker key={a.agent_id} position={[geo.lat, geo.lon]}>
+							<Popup>
+								<div className="map-popup">
+									<div className="map-popup-name">
+										<span className={`map-popup-dot ${online ? "online" : "offline"}`} />
+										{a.name || a.agent_id}
+									</div>
+									{geo.city && <div className="map-popup-loc">{geo.city}{geo.country ? `, ${geo.country}` : ""}</div>}
+									<div className="map-popup-coords">{geo.lat.toFixed(4)}, {geo.lon.toFixed(4)}</div>
+								</div>
+							</Popup>
+						</Marker>
+					);
+				})}
+			</MapContainer>
+		</div>
+	);
+}
+
 const Dashboard = () => {
 	const navigate = useNavigate();
 	const [agents, setAgents] = useState([]);
@@ -198,6 +327,10 @@ const Dashboard = () => {
 						<StatCard icon="fa-solid fa-hard-drive" label="Total Size" value={fmtBytes(totalSize)} sub="indexed" />
 						<StatCard icon="fa-solid fa-clone" label="Duplicates" value={totalDupes} sub="files found" />
 					</div>
+
+					<AgentDownloadSection />
+
+					<AgentMap agents={agents} />
 
 					{loading ? (
 						<div className="loading-row"><span className="spinner" />Loading devices…</div>

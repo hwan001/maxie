@@ -207,6 +207,7 @@ function DrivesTab({ agent, onRefresh }) {
 	const [deleteConfirm, setDeleteConfirm] = useState(null);
 	const [addForm, setAddForm] = useState(EMPTY_ADD_FORM);
 	const [addOpen, setAddOpen] = useState(false);
+	const [errMsg, setErrMsg] = useState("");
 
 	useEffect(() => {
 		setDrives(agent.drives ?? []);
@@ -214,12 +215,13 @@ function DrivesTab({ agent, onRefresh }) {
 
 	const persistDrives = async (newDrives) => {
 		setSaving(true);
+		setErrMsg("");
 		try {
 			await axios.put(`${BASE_URL}/protected/agents/${agent.agent_id}/drives`, { drives: newDrives }, { withCredentials: true });
 			setDrives(newDrives);
 			if (onRefresh) onRefresh();
 		} catch {
-			alert("Failed to save drive settings. Please try again.");
+			setErrMsg("Failed to save drive settings. Please try again.");
 		} finally {
 			setSaving(false);
 		}
@@ -242,7 +244,7 @@ function DrivesTab({ agent, onRefresh }) {
 		const path = addForm.path.trim();
 		if (!path) return;
 		if (drives.some(d => d.path === path)) {
-			alert("This path is already monitored.");
+			setErrMsg("This path is already monitored.");
 			return;
 		}
 		const newDrive = {
@@ -259,6 +261,15 @@ function DrivesTab({ agent, onRefresh }) {
 
 	return (
 		<div className="drives-tab">
+			{errMsg && (
+				<div className="drives-error-banner" role="alert">
+					<i className="fa-solid fa-circle-exclamation" />
+					{errMsg}
+					<button className="drives-error-dismiss" onClick={() => setErrMsg("")} aria-label="Dismiss">
+						<i className="fa-solid fa-xmark" />
+					</button>
+				</div>
+			)}
 			{/* Drives list */}
 			{drives.length === 0 ? (
 				<div className="drives-empty">
@@ -398,9 +409,27 @@ function DrivesTab({ agent, onRefresh }) {
 
 // ── Device list sidebar item ───────────────────────────────────────────────────
 
-function DeviceListItem({ agent, selected, onClick }) {
+function DeviceListItem({ agent, selected, onClick, onDelete }) {
 	const os = agent.client_data?.system_info?.os ?? "unknown";
 	const online = isOnline(agent.last_seen);
+	const [confirming, setConfirming] = useState(false);
+
+	const handleDeleteClick = (e) => {
+		e.stopPropagation();
+		setConfirming(true);
+	};
+
+	const handleConfirm = (e) => {
+		e.stopPropagation();
+		onDelete(agent.agent_id);
+		setConfirming(false);
+	};
+
+	const handleCancel = (e) => {
+		e.stopPropagation();
+		setConfirming(false);
+	};
+
 	return (
 		<div
 			className={`device-list-item${selected ? " active" : ""}`}
@@ -412,6 +441,20 @@ function DeviceListItem({ agent, selected, onClick }) {
 				<div className="device-list-name">{agent.name || agent.agent_id}</div>
 				<div className="device-list-meta">{os} · {fmtTime(agent.last_seen)}</div>
 			</div>
+			{confirming ? (
+				<div className="device-list-delete-confirm">
+					<button className="device-list-confirm-yes" onClick={handleConfirm} title="Confirm delete">
+						<i className="fa-solid fa-check" />
+					</button>
+					<button className="device-list-confirm-no" onClick={handleCancel} title="Cancel">
+						<i className="fa-solid fa-xmark" />
+					</button>
+				</div>
+			) : (
+				<button className="device-list-delete-btn" onClick={handleDeleteClick} title="Remove agent">
+					<i className="fa-solid fa-trash" />
+				</button>
+			)}
 		</div>
 	);
 }
@@ -439,6 +482,13 @@ function DeviceDetail({ agent, onRefresh }) {
 	const online = isOnline(agent.last_seen);
 	const driveCount = agent.drives?.length ?? 0;
 
+	const publicIP = agent.client_data?.public_ip ?? null;
+	const geoLoc = agent.client_data?.geo_location ?? null;
+	const networkDevices = agent.client_data?.network_devices ?? [];
+	const wifiNetworks = agent.client_data?.wifi_networks ?? [];
+	const wifiHistory = agent.client_data?.wifi_history ?? [];
+	const btDevices = agent.client_data?.bluetooth_devices ?? [];
+
 	const ifaceColumns = [
 		{ key: "name", label: "Name" },
 		{ key: "ip", label: "IP Address" },
@@ -450,6 +500,36 @@ function DeviceDetail({ agent, onRefresh }) {
 			render: p => <span className="port-badge">{p.port}</span>
 		},
 		{ key: "local_address", label: "Address" },
+	];
+
+	const neighborColumns = [
+		{ key: "ip", label: "IP Address" },
+		{ key: "mac", label: "MAC" },
+		{ key: "hostname", label: "Hostname" },
+	];
+
+	const wifiColumns = [
+		{ key: "ssid", label: "SSID" },
+		{ key: "bssid", label: "BSSID" },
+		{ key: "signal", label: "Signal" },
+		{ key: "security", label: "Security" },
+		{ key: "channel", label: "CH" },
+	];
+
+	const btColumns = [
+		{ key: "name", label: "Name" },
+		{ key: "address", label: "Address" },
+		{
+			key: "connected", label: "Connected",
+			render: d => (
+				<span className="port-badge" style={{
+					background: d.connected ? "var(--color-success-light, #d1fae5)" : "var(--color-accent-light)",
+					color: d.connected ? "var(--color-success, #059669)" : "var(--color-accent)",
+				}}>
+					{d.connected ? "Yes" : "No"}
+				</span>
+			),
+		},
 	];
 
 	return (
@@ -556,6 +636,92 @@ function DeviceDetail({ agent, onRefresh }) {
 							emptyMsg="No active ports"
 						/>
 					</div>
+
+					{/* Public IP & Location */}
+					{(publicIP || geoLoc) && (
+						<div className="info-card">
+							<div className="info-card-header">
+								<i className="fa-solid fa-earth-asia" />
+								<h3>Public IP &amp; Location</h3>
+							</div>
+							<div className="info-card-body">
+								{[
+									["Public IP", publicIP],
+									["Country", geoLoc?.country],
+									["Region", geoLoc?.region],
+									["City", geoLoc?.city],
+									["Coordinates", geoLoc?.lat != null ? `${geoLoc.lat.toFixed(4)}, ${geoLoc.lon.toFixed(4)}` : null],
+									["Timezone", geoLoc?.timezone],
+									["Source", geoLoc?.source],
+								].map(([k, v]) => v != null && (
+									<div className="kv-row" key={k}>
+										<span className="kv-key">{k}</span>
+										<span className="kv-val">{v}</span>
+									</div>
+								))}
+							</div>
+						</div>
+					)}
+
+					{/* Nearby Network Devices (ARP) */}
+					<div className="info-card">
+						<div className="info-card-header">
+							<i className="fa-solid fa-sitemap" />
+							<h3>Nearby Devices</h3>
+						</div>
+						<SearchableInfoTable
+							rows={networkDevices}
+							columns={neighborColumns}
+							defaultHeight={180}
+							emptyMsg="No nearby devices found"
+						/>
+					</div>
+
+					{/* Wi-Fi Networks */}
+					<div className="info-card">
+						<div className="info-card-header">
+							<i className="fa-solid fa-wifi" />
+							<h3>Wi-Fi Networks</h3>
+						</div>
+						<SearchableInfoTable
+							rows={wifiNetworks}
+							columns={wifiColumns}
+							defaultHeight={180}
+							emptyMsg="No Wi-Fi networks scanned"
+						/>
+					</div>
+
+					{/* Wi-Fi History */}
+					{wifiHistory.length > 0 && (
+						<div className="info-card">
+							<div className="info-card-header">
+								<i className="fa-solid fa-clock-rotate-left" />
+								<h3>Wi-Fi History</h3>
+							</div>
+							<div className="info-card-body" style={{ maxHeight: 200, overflowY: "auto" }}>
+								{wifiHistory.map((ssid, i) => (
+									<div className="kv-row" key={i}>
+										<span className="kv-key"><i className="fa-solid fa-wifi" style={{ fontSize: "0.7rem", marginRight: "0.3rem" }} />{i + 1}</span>
+										<span className="kv-val">{ssid}</span>
+									</div>
+								))}
+							</div>
+						</div>
+					)}
+
+					{/* Bluetooth Devices */}
+					<div className="info-card">
+						<div className="info-card-header">
+							<i className="fa-brands fa-bluetooth-b" />
+							<h3>Bluetooth Devices</h3>
+						</div>
+						<SearchableInfoTable
+							rows={btDevices}
+							columns={btColumns}
+							defaultHeight={180}
+							emptyMsg="No Bluetooth devices found"
+						/>
+					</div>
 				</div>
 			)}
 
@@ -573,6 +739,7 @@ const Devices = () => {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [agents, setAgents] = useState([]);
 	const [loading, setLoading] = useState(true);
+	const [deleteErr, setDeleteErr] = useState("");
 
 	const selectedId = searchParams.get("id");
 	const selected = agents.find(a => a.agent_id === selectedId) ?? (agents.length > 0 ? agents[0] : null);
@@ -589,6 +756,19 @@ const Devices = () => {
 
 	const selectAgent = (agent) => {
 		setSearchParams({ id: agent.agent_id });
+	};
+
+	const handleDelete = async (agentId) => {
+		setDeleteErr("");
+		try {
+			await axios.delete(`${BASE_URL}/protected/agents/${agentId}`, { withCredentials: true });
+			setAgents(prev => prev.filter(a => a.agent_id !== agentId));
+			if (selectedId === agentId) {
+				setSearchParams({});
+			}
+		} catch {
+			setDeleteErr("Failed to remove agent. Please try again.");
+		}
 	};
 
 	return (
@@ -611,12 +791,22 @@ const Devices = () => {
 									agent={a}
 									selected={selected?.agent_id === a.agent_id}
 									onClick={selectAgent}
+									onDelete={handleDelete}
 								/>
 							))}
 						</div>
 					)}
 				</aside>
 				<main className="dash-main">
+					{deleteErr && (
+						<div className="drives-error-banner" role="alert">
+							<i className="fa-solid fa-circle-exclamation" />
+							{deleteErr}
+							<button className="drives-error-dismiss" onClick={() => setDeleteErr("")} aria-label="Dismiss">
+								<i className="fa-solid fa-xmark" />
+							</button>
+						</div>
+					)}
 					<div className="dash-header">
 						<div>
 							<h1>Devices</h1>
