@@ -36,7 +36,10 @@ type User struct {
 	ExpiresAt *time.Time `json:"expires_at,omitempty"`
 }
 
+// jwtBlacklist maps a revoked JWT string to the time its entry may be purged
+// (set to the token's own expiry). Guarded by jwtBlacklistMu.
 var jwtBlacklist = map[string]time.Time{}
+var jwtBlacklistMu sync.Mutex
 
 type ClientData struct {
 	ClientID          string             `json:"client_id"`
@@ -141,4 +144,10 @@ type AgentRecord struct {
 }
 
 var agentStore = map[string]*AgentRecord{}
+
+// tokenIndex maps an agent's X-Agent-Token to its agent ID for O(1) lookup,
+// replacing the previous O(n) linear scan over agentStore on every
+// heartbeat / file push / pending-action request. Guarded by agentMu and
+// always mutated together with agentStore.
+var tokenIndex = map[string]string{}
 var agentMu sync.RWMutex

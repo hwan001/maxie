@@ -8,7 +8,9 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"sync"
 	"time"
 
@@ -353,6 +355,14 @@ func checkPendingActions() {
 	for _, action := range result.Actions {
 		switch action.Action {
 		case "delete":
+			// Defense in depth: only ever delete files that live under a drive
+			// the user explicitly configured. A compromised or malicious server
+			// must not be able to make the agent remove arbitrary paths.
+			if !isPathWithinConfiguredDrives(action.FullPath) {
+				log.Printf("refusing delete outside configured drives: %s", action.FullPath)
+				confirmAction(action.ID, action.FullPath)
+				continue
+			}
 			if err := os.Remove(action.FullPath); err != nil {
 				log.Printf("delete failed %s: %v", action.FullPath, err)
 				continue
@@ -361,6 +371,38 @@ func checkPendingActions() {
 		}
 		confirmAction(action.ID, action.FullPath)
 	}
+}
+
+// isPathWithinConfiguredDrives reports whether target lies inside one of the
+// agent's configured drive paths. It normalizes both sides to absolute, cleaned
+// paths and rejects targets that equal a drive root (a directory, never a file)
+// or escape it via "..".
+func isPathWithinConfiguredDrives(target string) bool {
+	absTarget, err := filepath.Abs(target)
+	if err != nil {
+		return false
+	}
+	absTarget = filepath.Clean(absTarget)
+
+	for _, d := range cfg.Drives {
+		absDrive, err := filepath.Abs(d.Path)
+		if err != nil {
+			continue
+		}
+		absDrive = filepath.Clean(absDrive)
+
+		rel, err := filepath.Rel(absDrive, absTarget)
+		if err != nil {
+			continue
+		}
+		// rel == "." → target IS the drive root; rel starting with ".." → target
+		// escapes the drive. Reject both; require a real descendant.
+		if rel == "." || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
 func confirmAction(id int64, fullpath string) {

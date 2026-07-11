@@ -148,6 +148,12 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
+		if isTokenBlacklisted(tokenString) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Token has been revoked"})
+			c.Abort()
+			return
+		}
+
 		claims := &Claims{}
 		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
 			return jwtSecret, nil
@@ -177,10 +183,39 @@ func getProfile(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"profile": user})
 }
 
+// blacklistToken marks a JWT as revoked until the given expiry. Thread-safe.
+func blacklistToken(token string, until time.Time) {
+	jwtBlacklistMu.Lock()
+	jwtBlacklist[token] = until
+	jwtBlacklistMu.Unlock()
+}
+
+// isTokenBlacklisted reports whether a JWT has been revoked via logout.
+func isTokenBlacklisted(token string) bool {
+	jwtBlacklistMu.Lock()
+	defer jwtBlacklistMu.Unlock()
+	_, ok := jwtBlacklist[token]
+	return ok
+}
+
+// cleanupBlacklist purges revoked tokens whose expiry has passed. Once a token
+// is past its own exp claim it fails signature/expiry validation anyway, so the
+// blacklist entry is no longer needed. Safe to call on a ticker.
+func cleanupBlacklist() {
+	now := time.Now()
+	jwtBlacklistMu.Lock()
+	defer jwtBlacklistMu.Unlock()
+	for token, until := range jwtBlacklist {
+		if now.After(until) {
+			delete(jwtBlacklist, token)
+		}
+	}
+}
+
 func logout(c *gin.Context) {
 	token, err := c.Cookie("jwt")
 	if err == nil {
-		jwtBlacklist[token] = time.Now().Add(time.Hour * 24)
+		blacklistToken(token, time.Now().Add(time.Hour*24))
 	}
 
 	cookieDomain := os.Getenv("COOKIE_DOMAIN")
@@ -231,11 +266,20 @@ func registerAgent(c *gin.Context) {
 
 	agentMu.Lock()
 	agentStore[agentID] = rec
+	tokenIndex[token] = agentID
 	agentMu.Unlock()
 
 	go saveAgents()
 	log.Printf("Agent registered: %s (%s) user=%s", req.Name, agentID, req.UserID)
 	c.JSON(http.StatusOK, gin.H{"agent_id": agentID, "token": token})
+}
+
+// findAgentIDByToken returns the agent ID for an X-Agent-Token via the token
+// index, or "" if no agent matches. O(1) lookup under a read lock.
+func findAgentIDByToken(token string) string {
+	agentMu.RLock()
+	defer agentMu.RUnlock()
+	return tokenIndex[token]
 }
 
 // getUserAgentIDs returns all agent IDs owned by the given user.
@@ -284,6 +328,7 @@ func deleteAgent(c *gin.Context) {
 		return
 	}
 	delete(agentStore, agentID)
+	delete(tokenIndex, agent.Token)
 	agentMu.Unlock()
 
 	go saveAgents()
@@ -315,74 +360,83 @@ func agentHeartbeat(c *gin.Context) {
 		return
 	}
 
+	agentID := findAgentIDByToken(token)
+	if agentID == "" {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
+
 	agentMu.Lock()
-	defer agentMu.Unlock()
+	a := agentStore[agentID]
+	if a == nil {
+		// Agent was deleted between the index lookup and acquiring the lock.
+		agentMu.Unlock()
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
+	}
 
-	for agentID, a := range agentStore {
-		if a.Token == token {
-			a.ClientData = req.ClientData
+	a.ClientData = req.ClientData
 
-			// Build a set of explicitly-deleted paths so agent heartbeats
-				// cannot silently re-add drives removed via the web UI.
-				deletedSet := make(map[string]struct{}, len(a.DeletedPaths))
-				for _, p := range a.DeletedPaths {
-					deletedSet[p] = struct{}{}
-				}
+	// Build a set of explicitly-deleted paths so agent heartbeats cannot
+	// silently re-add drives removed via the web UI.
+	deletedSet := make(map[string]struct{}, len(a.DeletedPaths))
+	for _, p := range a.DeletedPaths {
+		deletedSet[p] = struct{}{}
+	}
 
-				// Start from the current server drive list and update metadata.
-				merged := make([]DriveEntry, len(a.Drives))
-				copy(merged, a.Drives)
-				for i, serverDrive := range merged {
-					for _, agentDrive := range req.Drives {
-						if serverDrive.Path == agentDrive.Path {
-							merged[i].Label = agentDrive.Label
-							merged[i].DriveType = agentDrive.DriveType
-							break
-						}
-					}
-				}
-
-				// Agent may report paths not yet on the server — add them unless
-				// they were explicitly removed through the web UI.
-				serverPathSet := make(map[string]struct{}, len(a.Drives))
-				for _, d := range a.Drives {
-					serverPathSet[d.Path] = struct{}{}
-				}
-				for _, agentDrive := range req.Drives {
-					if _, onServer := serverPathSet[agentDrive.Path]; onServer {
-						continue // already handled above
-					}
-					if _, deleted := deletedSet[agentDrive.Path]; deleted {
-						continue // explicitly removed — do not re-add
-					}
-					merged = append(merged, agentDrive)
-				}
-
-			a.Drives = merged
-			a.FileStats = req.FileStats
-			// Update scan interval only if agent sends a non-zero value
-			// (server's configured value takes precedence if different)
-			if req.ScanIntervalMinutes > 0 && a.ScanIntervalMinutes == 0 {
-				a.ScanIntervalMinutes = req.ScanIntervalMinutes
+	// Start from the current server drive list and update metadata.
+	merged := make([]DriveEntry, len(a.Drives))
+	copy(merged, a.Drives)
+	for i, serverDrive := range merged {
+		for _, agentDrive := range req.Drives {
+			if serverDrive.Path == agentDrive.Path {
+				merged[i].Label = agentDrive.Label
+				merged[i].DriveType = agentDrive.DriveType
+				break
 			}
-			a.LastSeen = time.Now()
-			go saveAgents()
-
-			// Tell the agent how many files the server holds for it so it can
-			// trigger a re-push if the server is missing data (e.g. after a
-			// server restart that lost the file DB, or after a failed initial push).
-			serverCount := countFilesForAgent(agentID)
-			c.JSON(http.StatusOK, gin.H{
-				"ok":                    true,
-				"drives":                merged,
-				"scan_interval_minutes": a.ScanIntervalMinutes,
-				"server_file_count":     serverCount,
-			})
-			return
 		}
 	}
 
-	c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+	// Agent may report paths not yet on the server — add them unless they were
+	// explicitly removed through the web UI.
+	serverPathSet := make(map[string]struct{}, len(a.Drives))
+	for _, d := range a.Drives {
+		serverPathSet[d.Path] = struct{}{}
+	}
+	for _, agentDrive := range req.Drives {
+		if _, onServer := serverPathSet[agentDrive.Path]; onServer {
+			continue // already handled above
+		}
+		if _, deleted := deletedSet[agentDrive.Path]; deleted {
+			continue // explicitly removed — do not re-add
+		}
+		merged = append(merged, agentDrive)
+	}
+
+	a.Drives = merged
+	a.FileStats = req.FileStats
+	// Update scan interval only if agent sends a non-zero value
+	// (server's configured value takes precedence if different)
+	if req.ScanIntervalMinutes > 0 && a.ScanIntervalMinutes == 0 {
+		a.ScanIntervalMinutes = req.ScanIntervalMinutes
+	}
+	a.LastSeen = time.Now()
+	scanInterval := a.ScanIntervalMinutes
+	agentMu.Unlock()
+
+	go saveAgents()
+
+	// Tell the agent how many files the server holds for it so it can trigger a
+	// re-push if the server is missing data (e.g. after a server restart that
+	// lost the file DB, or after a failed initial push). Done outside the lock
+	// so this DB query does not block other agents' heartbeats.
+	serverCount := countFilesForAgent(agentID)
+	c.JSON(http.StatusOK, gin.H{
+		"ok":                    true,
+		"drives":                merged,
+		"scan_interval_minutes": scanInterval,
+		"server_file_count":     serverCount,
+	})
 }
 
 func updateAgentConfig(c *gin.Context) {
@@ -423,16 +477,7 @@ func pushAgentFiles(c *gin.Context) {
 		return
 	}
 
-	agentMu.RLock()
-	var agentID string
-	for id, a := range agentStore {
-		if a.Token == token {
-			agentID = id
-			break
-		}
-	}
-	agentMu.RUnlock()
-
+	agentID := findAgentIDByToken(token)
 	if agentID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 		return
@@ -601,16 +646,7 @@ func getPendingActionsHandler(c *gin.Context) {
 		return
 	}
 
-	agentMu.RLock()
-	var agentID string
-	for id, a := range agentStore {
-		if a.Token == token {
-			agentID = id
-			break
-		}
-	}
-	agentMu.RUnlock()
-
+	agentID := findAgentIDByToken(token)
 	if agentID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 		return
@@ -631,16 +667,7 @@ func confirmActionHandler(c *gin.Context) {
 		return
 	}
 
-	agentMu.RLock()
-	var agentID string
-	for id, a := range agentStore {
-		if a.Token == token {
-			agentID = id
-			break
-		}
-	}
-	agentMu.RUnlock()
-
+	agentID := findAgentIDByToken(token)
 	if agentID == "" {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
 		return
@@ -777,16 +804,9 @@ func agentUpdateDrives(c *gin.Context) {
 		return
 	}
 
+	agentID := findAgentIDByToken(token)
 	agentMu.Lock()
-	var agentID string
-	var agent *AgentRecord
-	for id, a := range agentStore {
-		if a.Token == token {
-			agentID = id
-			agent = a
-			break
-		}
-	}
+	agent := agentStore[agentID]
 	if agent == nil {
 		agentMu.Unlock()
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
@@ -864,6 +884,7 @@ func runCleanupTask() {
 	defer ticker.Stop()
 	for range ticker.C {
 		cleanupExpiredGuests()
+		cleanupBlacklist()
 	}
 }
 
@@ -884,6 +905,12 @@ func loadAgents() {
 	}
 	agentMu.Lock()
 	agentStore = store
+	tokenIndex = make(map[string]string, len(store))
+	for id, a := range store {
+		if a.Token != "" {
+			tokenIndex[a.Token] = id
+		}
+	}
 	agentMu.Unlock()
 	log.Printf("loaded %d agent(s) from disk", len(store))
 }
@@ -922,18 +949,19 @@ func linkAgentUser(c *gin.Context) {
 		return
 	}
 
+	agentID := findAgentIDByToken(token)
 	agentMu.Lock()
-	defer agentMu.Unlock()
-
-	for _, a := range agentStore {
-		if a.Token == token {
-			a.UserID = req.UserID
-			go saveAgents()
-			log.Printf("agent %s linked to user %s", a.AgentID, req.UserID)
-			c.JSON(http.StatusOK, gin.H{"ok": true})
-			return
-		}
+	a := agentStore[agentID]
+	if a == nil {
+		agentMu.Unlock()
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+		return
 	}
+	a.UserID = req.UserID
+	linkedID := a.AgentID
+	agentMu.Unlock()
 
-	c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid token"})
+	go saveAgents()
+	log.Printf("agent %s linked to user %s", linkedID, req.UserID)
+	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

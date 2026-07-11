@@ -565,6 +565,9 @@ func deleteUserWithAgents(userID string) {
 		}
 	}
 	for _, id := range toDelete {
+		if a := agentStore[id]; a != nil {
+			delete(tokenIndex, a.Token)
+		}
 		delete(agentStore, id)
 	}
 	agentMu.Unlock()
