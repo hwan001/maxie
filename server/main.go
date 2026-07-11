@@ -2,6 +2,7 @@ package main
 
 import (
 	"log"
+	"log/slog"
 	"os"
 	"time"
 
@@ -9,18 +10,25 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
+	"golang.org/x/time/rate"
 )
 
 func main() {
+	slog.SetDefault(slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelInfo})))
+
+	sessionSecret := envOrDefault("SESSION_SECRET", devSessionSecret)
+	if err := validateSecrets(sessionSecret); err != nil {
+		log.Fatalf("startup aborted: %v", err)
+	}
+
 	loadAgents()
 	if err := initFileDB(); err != nil {
 		log.Printf("filedb init failed: %v", err)
 	}
 	go runCleanupTask()
 
-	sessionSecret := envOrDefault("SESSION_SECRET", "dev-session-secret-change-me")
-
-	router := gin.Default()
+	router := gin.New()
+	router.Use(gin.Recovery(), requestLogger())
 	store := cookie.NewStore([]byte(sessionSecret))
 	router.Use(sessions.Sessions("session", store))
 
@@ -37,11 +45,22 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	router.POST("/auth/google", handleGoogleAuth)
-	router.POST("/auth/guest", handleGuestAuth)
+	// Health/readiness probes — public, unlogged, no auth.
+	router.GET("/healthz", healthzHandler)
+	router.GET("/readyz", readyzHandler)
+
+	// Shared per-IP budget for session/agent creation: ~10 burst then refill one
+	// every 6s (~10/min sustained). Guards against credential-stuffing and
+	// registration abuse. Token-authed high-frequency routes (heartbeat, file
+	// push) are intentionally left ungated to avoid throttling many agents that
+	// share one NAT IP.
+	authLimiter := rateLimit(rate.Every(6*time.Second), 10)
+
+	router.POST("/auth/google", authLimiter, handleGoogleAuth)
+	router.POST("/auth/guest", authLimiter, handleGuestAuth)
 
 	// Agent-auth routes (X-Agent-Token, no JWT required)
-	router.POST("/agent/register", registerAgent)
+	router.POST("/agent/register", authLimiter, registerAgent)
 	router.POST("/agent/heartbeat", agentHeartbeat)
 	router.POST("/agent/drives", agentUpdateDrives)
 	router.POST("/agent/files", pushAgentFiles)
