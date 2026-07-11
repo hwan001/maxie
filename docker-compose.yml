@@ -12,6 +12,7 @@ services:
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - REDIRECT_URI=${REDIRECT_URI:-http://localhost:8080}
       - JWT_SECRET=${JWT_SECRET:-dev-jwt-secret-change-me}
+      - SESSION_SECRET=${SESSION_SECRET:-dev-session-secret-change-me}
     volumes:
       # agent 등록 정보 및 파일 DB를 컨테이너 재시작 후에도 유지
       - maxie_data:/root/.maxie

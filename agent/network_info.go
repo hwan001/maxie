@@ -98,7 +98,9 @@ func getPublicIP() string {
 
 // getARPNeighbors returns devices currently in the local ARP cache.
 func getARPNeighbors() []NetworkDevice {
-	out, err := exec.Command("arp", "-a").Output()
+	cmd := exec.Command("arp", "-a")
+	hideWindow(cmd)
+	out, err := cmd.Output()
 	if err != nil {
 		return nil
 	}

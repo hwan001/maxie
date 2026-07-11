@@ -27,6 +27,7 @@ go.work.sum
 # IDE files
 .DS_Store
 PLAN*.md
+plans/*.md
 
 # binary files
 agent/agent

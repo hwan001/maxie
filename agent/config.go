@@ -28,7 +28,7 @@ type Config struct {
 
 func configDir() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".fileoptimizer")
+	return filepath.Join(home, ".maxie")
 }
 
 func configPath() string {

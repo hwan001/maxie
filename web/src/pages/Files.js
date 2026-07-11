@@ -97,6 +97,7 @@ function AllFilesTab({ agents }) {
 	const [sortBy, setSortBy] = useState("synced_at");
 	const [sortDir, setSortDir] = useState("desc");
 	const [loading, setLoading] = useState(false);
+	const [fetchError, setFetchError] = useState(null);
 	const [deleting, setDeleting] = useState(null);
 	const [groupView, setGroupView] = useState(false);
 	const [collapsedGroups, setCollapsedGroups] = useState({});
@@ -133,12 +134,16 @@ function AllFilesTab({ agents }) {
 		if (agentFilter) params.agent_id = agentFilter;
 		if (driveFilter) params.drive_type = driveFilter;
 
+		setFetchError(null);
 		axios.get(`${BASE_URL}/protected/files`, { params, withCredentials: true })
 			.then(r => {
 				setFiles(r.data?.files ?? []);
 				setTotal(r.data?.total ?? 0);
 			})
-			.catch(() => {})
+			.catch(err => {
+				const msg = err?.response?.data?.error || err?.message || "Failed to load files";
+				setFetchError(msg);
+			})
 			.finally(() => setLoading(false));
 	}, [page, limit, search, agentFilter, driveFilter, sortBy, sortDir]);
 
@@ -280,10 +285,17 @@ function AllFilesTab({ agents }) {
 
 			{loading ? (
 				<div className="loading-row"><span className="spinner" />Loading…</div>
+			) : fetchError ? (
+				<div className="empty-state" style={{ color: "var(--color-danger, #ef4444)" }}>
+					<i className="fa-solid fa-circle-exclamation" />
+					<span>Could not load files: <strong>{fetchError}</strong></span>
+				</div>
 			) : files.length === 0 ? (
 				<div className="empty-state">
 					<i className="fa-solid fa-folder-open" />
-					No files found
+					{agents.length === 0
+						? <span>No agents linked to your account.<br />Open the Maxie agent → Settings → <strong>Link User Code</strong> and paste your User ID.</span>
+						: "No files found"}
 				</div>
 			) : groupView ? (
 				<>

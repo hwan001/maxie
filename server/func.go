@@ -318,7 +318,7 @@ func agentHeartbeat(c *gin.Context) {
 	agentMu.Lock()
 	defer agentMu.Unlock()
 
-	for _, a := range agentStore {
+	for agentID, a := range agentStore {
 		if a.Token == token {
 			a.ClientData = req.ClientData
 
@@ -367,10 +367,16 @@ func agentHeartbeat(c *gin.Context) {
 			}
 			a.LastSeen = time.Now()
 			go saveAgents()
+
+			// Tell the agent how many files the server holds for it so it can
+			// trigger a re-push if the server is missing data (e.g. after a
+			// server restart that lost the file DB, or after a failed initial push).
+			serverCount := countFilesForAgent(agentID)
 			c.JSON(http.StatusOK, gin.H{
 				"ok":                    true,
 				"drives":                merged,
 				"scan_interval_minutes": a.ScanIntervalMinutes,
+				"server_file_count":     serverCount,
 			})
 			return
 		}
@@ -863,7 +869,7 @@ func runCleanupTask() {
 
 func agentsFilePath() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".fileoptimizer", "agents.json")
+	return filepath.Join(home, ".maxie", "agents.json")
 }
 
 func loadAgents() {

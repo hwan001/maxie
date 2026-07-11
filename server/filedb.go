@@ -69,7 +69,7 @@ type FileQueryResult struct {
 
 func fileDBPath() string {
 	home, _ := os.UserHomeDir()
-	return filepath.Join(home, ".fileoptimizer", "files.db")
+	return filepath.Join(home, ".maxie", "files.db")
 }
 
 func initFileDB() error {
@@ -116,6 +116,12 @@ func initFileDB() error {
 		}
 	}
 	return initUserTables()
+}
+
+func countFilesForAgent(agentID string) int {
+	var n int
+	fileDB.QueryRow(`SELECT COUNT(*) FROM files WHERE agent_id = ?`, agentID).Scan(&n)
+	return n
 }
 
 func upsertFileBatch(agentID string, records []AgentFileRecord) error {

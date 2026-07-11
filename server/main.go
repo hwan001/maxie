@@ -18,8 +18,10 @@ func main() {
 	}
 	go runCleanupTask()
 
+	sessionSecret := envOrDefault("SESSION_SECRET", "dev-session-secret-change-me")
+
 	router := gin.Default()
-	store := cookie.NewStore([]byte("secret"))
+	store := cookie.NewStore([]byte(sessionSecret))
 	router.Use(sessions.Sessions("session", store))
 
 	corsOrigin := os.Getenv("CORS_ALLOW_ORIGIN")
@@ -64,5 +66,11 @@ func main() {
 		protected.DELETE("/files", deleteFileHandler)
 	}
 
-	router.Run(":50000")
+	port := os.Getenv("SERVER_PORT")
+	if port == "" {
+		port = ":50000"
+	} else if port[0] != ':' {
+		port = ":" + port
+	}
+	router.Run(port)
 }

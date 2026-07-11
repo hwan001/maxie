@@ -1,7 +1,8 @@
 export const DEBUG = process.env.NODE_ENV !== "production";
-export const BASE_URL = process.env.REACT_APP_BASE_URL || 'http://localhost:50000';
+export const BASE_URL = process.env.REACT_APP_BASE_URL
+  ?? (process.env.NODE_ENV === 'development' ? 'http://localhost:50000' : '');
 export const AGENT_RELEASE_BASE_URL = process.env.REACT_APP_AGENT_RELEASE_BASE_URL ||
-	'https://github.com/hwan001/fileoptimizer/releases/latest/download';
+	'https://github.com/hwan001/maxie/releases/latest/download';
 
 export const Title = "Maxie";
 export const Logo = "fab fa-typo3";

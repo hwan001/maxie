@@ -386,6 +386,10 @@ func syncData() {
 		return
 	}
 
+	// Capture the token we're about to use so we can detect if another
+	// goroutine already handled a 401 and re-registered before us.
+	sentToken := cfg.Token
+
 	data := collectData()
 	hostname, _ := os.Hostname()
 	data.ClientID = hostname
@@ -420,7 +424,7 @@ func syncData() {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Agent-Token", cfg.Token)
+	req.Header.Set("X-Agent-Token", sentToken)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -432,6 +436,7 @@ func syncData() {
 		var hbResp struct {
 			Drives              []DriveEntry `json:"drives"`
 			ScanIntervalMinutes int          `json:"scan_interval_minutes"`
+			ServerFileCount     int          `json:"server_file_count"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&hbResp); err == nil {
 			// Always update drives from server — an empty slice means the server
@@ -441,11 +446,37 @@ func syncData() {
 				cfg.ScanIntervalMinutes = hbResp.ScanIntervalMinutes
 			}
 			saveConfig(cfg)
+
+			// If the server has fewer files than the local cache, push all
+			// local files so the dashboard is in sync. This recovers from a
+			// failed initial push or a server-side data loss.
+			localStats := computeFileStats("")
+			if hbResp.ServerFileCount < localStats.TotalFiles {
+				log.Printf("server has %d files but local cache has %d — triggering re-sync", hbResp.ServerFileCount, localStats.TotalFiles)
+				go func() {
+					all, err := getAllCachedFiles()
+					if err != nil {
+						log.Printf("re-sync: failed to read local cache: %v", err)
+						return
+					}
+					if len(all) > 0 {
+						pushFiles(all)
+					}
+				}()
+			}
 		}
 		return
 	}
 
 	if resp.StatusCode == http.StatusUnauthorized {
+		reRegisterMu.Lock()
+		defer reRegisterMu.Unlock()
+
+		// Another goroutine already handled this 401 and got a new token.
+		if cfg.Token != sentToken {
+			return
+		}
+
 		log.Printf("heartbeat 401: token invalidated, attempting re-registration")
 		cfg.AgentID = ""
 		cfg.Token = ""

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 
 var cfg *Config
 var reRegisterCh = make(chan struct{}, 1)
+var reRegisterMu sync.Mutex
 
 // scanStateCh carries scan state update strings:
 //
@@ -38,9 +40,9 @@ func main() {
 
 func onReady() {
 	systray.SetIcon(getIdleIcon())
-	systray.SetTooltip("File Optimizer Agent")
+	systray.SetTooltip("Maxie Agent")
 
-	mTitle := systray.AddMenuItem("File Optimizer Agent", "")
+	mTitle := systray.AddMenuItem("Maxie Agent", "")
 	mTitle.Disable()
 
 	// Unregistered items

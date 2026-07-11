@@ -2,6 +2,9 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -10,8 +13,12 @@ import (
 var db *sql.DB
 
 func initDB() error {
+	path := dbPath()
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		return fmt.Errorf("create config dir: %w", err)
+	}
 	var err error
-	db, err = sql.Open("sqlite", dbPath())
+	db, err = sql.Open("sqlite", path)
 	if err != nil {
 		return err
 	}
@@ -60,6 +67,27 @@ func upsertFile(r FileRecord) error {
 		r.SyncedAt.Unix(),
 	)
 	return err
+}
+
+func getAllCachedFiles() ([]FileRecord, error) {
+	rows, err := db.Query(`SELECT fullpath, size, modified_at, created_at, hash, drive_type, synced_at FROM files`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var records []FileRecord
+	for rows.Next() {
+		var r FileRecord
+		var modAt, crAt, syncAt int64
+		if err := rows.Scan(&r.FullPath, &r.Size, &modAt, &crAt, &r.Hash, &r.DriveType, &syncAt); err != nil {
+			continue
+		}
+		r.ModifiedAt = time.Unix(modAt, 0)
+		r.CreatedAt = time.Unix(crAt, 0)
+		r.SyncedAt = time.Unix(syncAt, 0)
+		records = append(records, r)
+	}
+	return records, rows.Err()
 }
 
 func getCachedFile(fullpath string) (*FileRecord, error) {
