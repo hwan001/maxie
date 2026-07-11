@@ -386,6 +386,10 @@ func syncData() {
 		return
 	}
 
+	// Capture the token we're about to use so we can detect if another
+	// goroutine already handled a 401 and re-registered before us.
+	sentToken := cfg.Token
+
 	data := collectData()
 	hostname, _ := os.Hostname()
 	data.ClientID = hostname
@@ -420,7 +424,7 @@ func syncData() {
 		return
 	}
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-Agent-Token", cfg.Token)
+	req.Header.Set("X-Agent-Token", sentToken)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -465,6 +469,14 @@ func syncData() {
 	}
 
 	if resp.StatusCode == http.StatusUnauthorized {
+		reRegisterMu.Lock()
+		defer reRegisterMu.Unlock()
+
+		// Another goroutine already handled this 401 and got a new token.
+		if cfg.Token != sentToken {
+			return
+		}
+
 		log.Printf("heartbeat 401: token invalidated, attempting re-registration")
 		cfg.AgentID = ""
 		cfg.Token = ""
