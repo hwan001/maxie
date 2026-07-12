@@ -430,6 +430,28 @@
 .device-status.online { background: #22c55e; }
 .device-status.offline { background: var(--color-border); }
 
+.device-status-badge {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	font-size: 0.7rem;
+	font-weight: 600;
+	padding: 0.15rem 0.5rem;
+	border-radius: 999px;
+	flex-shrink: 0;
+}
+
+.device-status-badge.online {
+	background: #dcfce7;
+	color: #15803d;
+}
+
+.device-status-badge.offline {
+	background: var(--color-bg);
+	border: 1px solid var(--color-border);
+	color: var(--color-text-muted);
+}
+
 .device-os-icon {
 	font-size: 1rem;
 	color: var(--color-accent);

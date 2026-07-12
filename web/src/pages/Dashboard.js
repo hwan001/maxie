@@ -96,7 +96,10 @@ function DeviceCard({ agent, onClick }) {
 	return (
 		<div className="device-card" onClick={() => onClick(agent)}>
 			<div className="device-card-header">
-				<div className={`device-status ${online ? "online" : "offline"}`} title={online ? "Online" : "Offline"} />
+				<span className={`device-status-badge ${online ? "online" : "offline"}`}>
+					<span className={`device-status ${online ? "online" : "offline"}`} />
+					{online ? "Online" : "Offline"}
+				</span>
 				<i className={`device-os-icon ${OS_ICONS[os] ?? "fa-solid fa-desktop"}`} />
 				<div className="device-name">{agent.name || agent.agent_id}</div>
 				<span className="device-os-tag">{os}</span>
