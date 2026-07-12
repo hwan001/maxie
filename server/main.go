@@ -59,6 +59,14 @@ func main() {
 	router.POST("/auth/google", authLimiter, handleGoogleAuth)
 	router.POST("/auth/guest", authLimiter, handleGuestAuth)
 
+	// Admin console — protected by its own password (separate from user auth).
+	// Status is public so the UI can pick setup vs login; login and password
+	// changes are rate-limited to blunt brute force.
+	router.GET("/admin/status", adminStatusHandler)
+	router.POST("/admin/login", authLimiter, adminLoginHandler)
+	router.POST("/admin/logout", adminLogoutHandler)
+	router.POST("/admin/password", authLimiter, adminSetPasswordHandler)
+
 	// Agent-auth routes (X-Agent-Token, no JWT required)
 	router.POST("/agent/register", authLimiter, registerAgent)
 	router.POST("/agent/heartbeat", agentHeartbeat)
