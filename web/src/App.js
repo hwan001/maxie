@@ -7,6 +7,7 @@ import Dashboard from "./pages/Dashboard";
 import Devices from "./pages/Devices";
 import Files from "./pages/Files";
 import Optimization from "./pages/Optimization";
+import Admin from "./pages/Admin";
 
 function App() {
 	return (
@@ -18,6 +19,7 @@ function App() {
 				<Route path="/devices" element={<Devices />} />
 				<Route path="/files" element={<Files />} />
 				<Route path="/optimization" element={<Optimization />} />
+				<Route path="/admin" element={<Admin />} />
 			</Routes>
 		</Router>
 	);

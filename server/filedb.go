@@ -115,7 +115,10 @@ func initFileDB() error {
 			return fmt.Errorf("filedb init: %w", err)
 		}
 	}
-	return initUserTables()
+	if err := initUserTables(); err != nil {
+		return err
+	}
+	return initConfigTable()
 }
 
 func countFilesForAgent(agentID string) int {
