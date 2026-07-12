@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import Navbar from "../components/Navbar";
 import TopologyPanel from "../components/AdminTopology";
+import UsersPanel from "../components/AdminUsers";
 import "../styles/Dashboard.css";
 import "../styles/Admin.css";
 import { Title, Logo, MenuItems, BASE_URL } from "../constants";
@@ -290,14 +291,7 @@ function AdminPanel({ tab }) {
 		case "security":
 			return <ChangePasswordPanel />;
 		case "users":
-			return (
-				<PlaceholderPanel
-					icon="fa-solid fa-users-gear"
-					title="Users & Roles"
-					description="View accounts and assign admin or user roles."
-					items={["List users linked to the server", "Grant or revoke the admin role", "Search and filter accounts"]}
-				/>
-			);
+			return <UsersPanel />;
 		case "auth":
 			return (
 				<PlaceholderPanel

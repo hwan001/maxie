@@ -227,6 +227,47 @@ type adminTopologyUser struct {
 	Devices     []adminTopologyDevice `json:"devices"`
 }
 
+type adminUserRow struct {
+	UserID      string     `json:"user_id"`
+	Name        string     `json:"name"`
+	Email       string     `json:"email"`
+	IsGuest     bool       `json:"is_guest"`
+	CreatedAt   time.Time  `json:"created_at"`
+	ExpiresAt   *time.Time `json:"expires_at,omitempty"`
+	DeviceCount int        `json:"device_count"`
+}
+
+// adminUsersHandler (GET /admin/users, admin-gated) returns all accounts with a
+// count of the devices each owns. Read-only listing — role management is separate.
+func adminUsersHandler(c *gin.Context) {
+	users, err := listUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load users"})
+		return
+	}
+
+	agentMu.RLock()
+	counts := make(map[string]int)
+	for _, a := range agentStore {
+		counts[a.UserID]++
+	}
+	agentMu.RUnlock()
+
+	rows := make([]adminUserRow, 0, len(users))
+	for _, u := range users {
+		rows = append(rows, adminUserRow{
+			UserID:      u.ID,
+			Name:        u.Name,
+			Email:       u.Email,
+			IsGuest:     u.IsGuest,
+			CreatedAt:   u.CreatedAt,
+			ExpiresAt:   u.ExpiresAt,
+			DeviceCount: counts[u.ID],
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"users": rows})
+}
+
 // adminTopologyHandler (GET /admin/topology, admin-gated) returns every user
 // with the devices (agents) they own, built from the users table + agentStore.
 // Agents whose owner has no user row are returned under "unassigned" (legacy

@@ -71,6 +71,7 @@ func main() {
 	adminAPI := router.Group("/admin")
 	adminAPI.Use(AdminAuthMiddleware())
 	{
+		adminAPI.GET("/users", adminUsersHandler)
 		adminAPI.GET("/topology", adminTopologyHandler)
 	}
 

@@ -235,6 +235,32 @@
 	color: var(--color-text-muted);
 }
 
+/* ── Users table ─────────────────────────────────────────────────── */
+.admin-table-wrap {
+	overflow-x: auto;
+}
+
+.admin-users-table {
+	width: 100%;
+}
+
+.admin-user-cell {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.admin-user-name {
+	font-size: 0.85rem;
+	font-weight: 600;
+	color: var(--color-text);
+}
+
+.admin-user-sub {
+	font-size: 0.75rem;
+	color: var(--color-text-muted);
+}
+
 /* ── Topology tree ───────────────────────────────────────────────── */
 .topo-tree {
 	display: flex;
