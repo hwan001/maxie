@@ -192,3 +192,88 @@ func adminLogoutHandler(c *gin.Context) {
 	clearAdminCookie(c)
 	c.JSON(http.StatusOK, gin.H{"message": "logged out"})
 }
+
+// AdminAuthMiddleware gates admin-only data endpoints behind a valid admin session.
+func AdminAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !isAdminAuthenticated(c) {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "admin authentication required"})
+			c.Abort()
+			return
+		}
+		c.Next()
+	}
+}
+
+// agentOnlineWindow is how long after the last heartbeat an agent is still
+// considered online. Mirrors the 5-minute threshold used in the web UI.
+const agentOnlineWindow = 5 * time.Minute
+
+type adminTopologyDevice struct {
+	AgentID  string    `json:"agent_id"`
+	Name     string    `json:"name"`
+	OS       string    `json:"os"`
+	LastSeen time.Time `json:"last_seen"`
+	Online   bool      `json:"online"`
+	Files    int       `json:"files"`
+}
+
+type adminTopologyUser struct {
+	UserID      string                `json:"user_id"`
+	Name        string                `json:"name"`
+	Email       string                `json:"email"`
+	IsGuest     bool                  `json:"is_guest"`
+	DeviceCount int                   `json:"device_count"`
+	Devices     []adminTopologyDevice `json:"devices"`
+}
+
+// adminTopologyHandler (GET /admin/topology, admin-gated) returns every user
+// with the devices (agents) they own, built from the users table + agentStore.
+// Agents whose owner has no user row are returned under "unassigned" (legacy
+// agents registered before user isolation).
+func adminTopologyHandler(c *gin.Context) {
+	users, err := listUsers()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to load users"})
+		return
+	}
+
+	agentMu.RLock()
+	byUser := make(map[string][]adminTopologyDevice)
+	for _, a := range agentStore {
+		byUser[a.UserID] = append(byUser[a.UserID], adminTopologyDevice{
+			AgentID:  a.AgentID,
+			Name:     a.Name,
+			OS:       a.ClientData.SystemInfo.OS,
+			LastSeen: a.LastSeen,
+			Online:   time.Since(a.LastSeen) < agentOnlineWindow,
+			Files:    a.FileStats.TotalFiles,
+		})
+	}
+	agentMu.RUnlock()
+
+	result := make([]adminTopologyUser, 0, len(users))
+	for _, u := range users {
+		devices := byUser[u.ID]
+		delete(byUser, u.ID)
+		if devices == nil {
+			devices = []adminTopologyDevice{}
+		}
+		result = append(result, adminTopologyUser{
+			UserID:      u.ID,
+			Name:        u.Name,
+			Email:       u.Email,
+			IsGuest:     u.IsGuest,
+			DeviceCount: len(devices),
+			Devices:     devices,
+		})
+	}
+
+	// Whatever remains in byUser has no matching user row.
+	orphan := []adminTopologyDevice{}
+	for _, ds := range byUser {
+		orphan = append(orphan, ds...)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"users": result, "unassigned": orphan})
+}

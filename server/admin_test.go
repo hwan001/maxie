@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -17,6 +18,9 @@ func newAdminRouter() *gin.Engine {
 	r.POST("/admin/login", adminLoginHandler)
 	r.POST("/admin/logout", adminLogoutHandler)
 	r.POST("/admin/password", adminSetPasswordHandler)
+	gated := r.Group("/admin")
+	gated.Use(AdminAuthMiddleware())
+	gated.GET("/topology", adminTopologyHandler)
 	return r
 }
 
@@ -109,5 +113,69 @@ func TestAdminAuthFlow(t *testing.T) {
 	if w := do(r, "POST", "/admin/password",
 		map[string]string{"password": "brandnewpass", "current_password": "supersecret"}, boot); w.Code != http.StatusOK {
 		t.Fatalf("valid change: got %d, want 200", w.Code)
+	}
+}
+
+func TestAdminTopology(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	if err := initFileDB(); err != nil {
+		t.Fatalf("initFileDB: %v", err)
+	}
+	r := newAdminRouter()
+
+	// Gated: no admin session → 401.
+	if w := do(r, "GET", "/admin/topology", nil, nil); w.Code != http.StatusUnauthorized {
+		t.Fatalf("topology gate: got %d, want 401", w.Code)
+	}
+
+	// Bootstrap to obtain an admin session cookie.
+	cookie := adminCookie(do(r, "POST", "/admin/password", map[string]string{"password": "supersecret"}, nil))
+	if cookie == nil {
+		t.Fatal("no admin cookie from bootstrap")
+	}
+
+	// Seed a user and an owned agent.
+	u, err := upsertOAuthUser("google", "pid-1", "Alice", "alice@example.com", "")
+	if err != nil {
+		t.Fatalf("seed user: %v", err)
+	}
+	agentMu.Lock()
+	agentStore["a-topo-1"] = &AgentRecord{AgentID: "a-topo-1", Name: "Laptop", UserID: u.ID, LastSeen: time.Now()}
+	agentMu.Unlock()
+	defer func() {
+		agentMu.Lock()
+		delete(agentStore, "a-topo-1")
+		agentMu.Unlock()
+	}()
+
+	w := do(r, "GET", "/admin/topology", nil, cookie)
+	if w.Code != http.StatusOK {
+		t.Fatalf("topology: got %d, want 200", w.Code)
+	}
+	var resp struct {
+		Users []struct {
+			UserID      string `json:"user_id"`
+			DeviceCount int    `json:"device_count"`
+			Devices     []struct {
+				AgentID string `json:"agent_id"`
+				Online  bool   `json:"online"`
+			} `json:"devices"`
+		} `json:"users"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	found := false
+	for _, us := range resp.Users {
+		if us.UserID != u.ID {
+			continue
+		}
+		found = true
+		if us.DeviceCount != 1 || len(us.Devices) != 1 || us.Devices[0].AgentID != "a-topo-1" || !us.Devices[0].Online {
+			t.Fatalf("alice topology wrong: %+v", us)
+		}
+	}
+	if !found {
+		t.Fatal("seeded user missing from topology")
 	}
 }

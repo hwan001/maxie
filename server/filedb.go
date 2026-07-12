@@ -532,6 +532,39 @@ func getUserByID(id string) (*User, error) {
 	return &u, nil
 }
 
+// listUsers returns all user records, newest first.
+func listUsers() ([]User, error) {
+	rows, err := fileDB.Query(
+		`SELECT id, name, email, picture, is_guest, created_at, expires_at FROM users ORDER BY created_at DESC`,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("listUsers: %w", err)
+	}
+	defer rows.Close()
+
+	var users []User
+	for rows.Next() {
+		var u User
+		var createdAt int64
+		var expiresAt sql.NullInt64
+		var isGuest int
+		if err := rows.Scan(&u.ID, &u.Name, &u.Email, &u.Picture, &isGuest, &createdAt, &expiresAt); err != nil {
+			continue
+		}
+		u.IsGuest = isGuest == 1
+		u.CreatedAt = time.Unix(createdAt, 0)
+		if expiresAt.Valid {
+			t := time.Unix(expiresAt.Int64, 0)
+			u.ExpiresAt = &t
+		}
+		users = append(users, u)
+	}
+	if users == nil {
+		users = []User{}
+	}
+	return users, nil
+}
+
 // cleanupExpiredGuests removes guest users whose expiry has passed, along with
 // all of their agents and file records. Safe to call on a ticker.
 func cleanupExpiredGuests() {

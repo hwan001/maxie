@@ -67,6 +67,13 @@ func main() {
 	router.POST("/admin/logout", adminLogoutHandler)
 	router.POST("/admin/password", authLimiter, adminSetPasswordHandler)
 
+	// Admin data endpoints require a valid admin session.
+	adminAPI := router.Group("/admin")
+	adminAPI.Use(AdminAuthMiddleware())
+	{
+		adminAPI.GET("/topology", adminTopologyHandler)
+	}
+
 	// Agent-auth routes (X-Agent-Token, no JWT required)
 	router.POST("/agent/register", authLimiter, registerAgent)
 	router.POST("/agent/heartbeat", agentHeartbeat)
