@@ -30,7 +30,7 @@ function AdminSetupCard() {
 		}
 		setError("");
 		// Backend wiring (bcrypt hash → app_config) lands in the next step.
-		setError("Saving is not connected yet — server endpoint comes next (MAX-10 backend).");
+		setError("Saving isn't available yet.");
 	};
 
 	return (
@@ -108,8 +108,8 @@ const Admin = () => {
 							<span className="admin-badge">Planned</span>
 						</div>
 						<ul className="admin-roadmap">
-							<li><i className="fa-solid fa-key" /> OIDC provider connection &amp; role management (MAX-11)</li>
-							<li><i className="fa-solid fa-sitemap" /> User–device list &amp; topology view (MAX-12)</li>
+							<li><i className="fa-solid fa-key" /> OIDC provider connection &amp; role management</li>
+							<li><i className="fa-solid fa-sitemap" /> User–device list &amp; topology view</li>
 						</ul>
 					</section>
 				</main>

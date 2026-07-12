@@ -13,7 +13,6 @@ export const MenuItems = {
 		{ i: "fa-solid fa-desktop", label: "Devices", path: "/devices" },
 		{ i: "fa-solid fa-file-lines", label: "Files", path: "/files" },
 		{ i: "fa-solid fa-wand-magic-sparkles", label: "Optimize", path: "/optimization" },
-		{ i: "fa-solid fa-shield-halved", label: "Admin", path: "/admin" },
 	],
 	dashboard: [{ i: "fa-solid fa-house", label: "Home", path: "/" }],
 	home: [
