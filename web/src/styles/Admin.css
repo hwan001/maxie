@@ -294,6 +294,106 @@
 	white-space: nowrap;
 }
 
+.topo-user-id {
+	font-family: "SF Mono", "Fira Code", ui-monospace, monospace;
+	font-size: 0.72rem;
+}
+
+/* ── List / Graph toggle ─────────────────────────────────────────── */
+.topo-toggle {
+	margin-left: auto;
+	flex-shrink: 0;
+	display: inline-flex;
+	border: 1px solid var(--color-border);
+	border-radius: var(--radius-sm);
+	overflow: hidden;
+}
+
+.topo-toggle-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 0.35rem;
+	padding: 0.35rem 0.7rem;
+	border: none;
+	background: var(--color-surface);
+	color: var(--color-text-muted);
+	font-size: 0.78rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: background var(--duration) ease, color var(--duration) ease;
+}
+
+.topo-toggle-btn + .topo-toggle-btn {
+	border-left: 1px solid var(--color-border);
+}
+
+.topo-toggle-btn:hover {
+	color: var(--color-accent);
+}
+
+.topo-toggle-btn.active {
+	background: var(--color-accent);
+	color: #fff;
+}
+
+/* ── Graph view ──────────────────────────────────────────────────── */
+.topo-graph-wrap {
+	overflow-x: auto;
+}
+
+.topo-graph {
+	display: block;
+	min-width: 480px;
+}
+
+.topo-edge {
+	stroke: var(--color-border);
+	stroke-width: 1.5;
+	fill: none;
+}
+
+.topo-gnode text {
+	fill: var(--color-text);
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.topo-gnode-sub {
+	fill: var(--color-text-muted);
+	font-size: 10px;
+	font-weight: 400;
+}
+
+.topo-gnode--root circle {
+	fill: var(--color-accent);
+}
+
+.topo-gnode--root text {
+	fill: var(--color-text-muted);
+	font-size: 9px;
+	font-weight: 600;
+	letter-spacing: 0.05em;
+	text-transform: uppercase;
+}
+
+.topo-gnode--user circle {
+	fill: var(--color-accent);
+}
+
+.topo-gnode--user.guest circle {
+	fill: var(--color-text-muted);
+}
+
+.topo-gnode--device.online circle {
+	fill: #22c55e;
+}
+
+.topo-gnode--device.offline circle {
+	fill: var(--color-surface);
+	stroke: var(--color-border);
+	stroke-width: 1.5;
+}
+
 .topo-device-count {
 	margin-left: auto;
 	flex-shrink: 0;
